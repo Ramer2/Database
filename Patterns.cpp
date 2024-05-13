@@ -14,3 +14,6 @@ const std::regex Patterns::del = std::regex("delete", std::regex_constants::icas
 const std::regex Patterns::from = std::regex("from", std::regex_constants::icase);
 const std::regex Patterns::into = std::regex("into", std::regex_constants::icase);
 const std::regex Patterns::where = std::regex("where", std::regex_constants::icase);
+const std::regex Patterns::and_ = std::regex("and", std::regex_constants::icase);
+const std::regex Patterns::or_ = std::regex("or", std::regex_constants::icase);
+const std::regex Patterns::not_ = std::regex("not", std::regex_constants::icase);
