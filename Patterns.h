@@ -12,6 +12,7 @@ public:
     static const std::regex alter;
     static const std::regex truncate;
     static const std::regex insert;
+    static const std::regex values;
     static const std::regex update;
     static const std::regex del;
     static const std::regex from;

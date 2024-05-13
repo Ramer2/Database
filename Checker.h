@@ -22,6 +22,7 @@ private:
                 std::regex_match(word, Patterns::create) or
                 std::regex_match(word, Patterns::del) or
                 std::regex_match(word, Patterns::insert) or
+                std::regex_match(word, Patterns::values) or
                 std::regex_match(word, Patterns::from) or
                 std::regex_match(word, Patterns::into) or
                 std::regex_match(word, Patterns::or_) or
@@ -79,10 +80,10 @@ private:
     }
 public:
     auto syntaxCheck(std::vector<std::string>& input) {
-        //TODO: do all of these as functions (?)
+
         //select
         if (std::regex_match(input[0], Patterns::select)){
-            int iterator = 1;
+            auto iterator = 1;
             ast.emplace_back("SELECT");
             parameters["SELECT"] = parameterExtraction(input, iterator);
 
@@ -107,10 +108,48 @@ public:
 
             } else {
                 std::cout << R"(Syntax Error: "FROM" or "INTO" expected)";
-                return;
+                exit(-1);
             }
-        }// else if()
-        else {
+        } else if(std::regex_match(input[0], Patterns::insert)) {
+
+            auto iterator = 1;
+            //insert into
+            if (!std::regex_match(input[iterator], Patterns::into)) {
+                std::cout << R"(Syntax Error: "INTO" expected)";
+                exit(-1);
+            }
+            iterator++;
+
+            ast.emplace_back("INSERT_INTO");
+            //extractor for insert parameters (no need)
+            parameters["INSERT_INTO"] = parameterExtraction(input, iterator);
+
+            int col_counter = 0;
+            for (int i = 2; i < parameters["INSERT_INTO"].size(); i++)
+                if (parameters["INSERT_INTO"][i] != ")"
+                and parameters["INSERT_INTO"][i] != ","
+                and parameters["INSERT_INTO"][i] != "(") col_counter++;
+
+            if (!std::regex_match(input[iterator], Patterns::values)) {
+                std::cout << R"(Syntax Error: "VALUES" expected)";
+                exit(-1);
+            }
+            iterator++;
+
+            ast.emplace_back("VALUES");
+            parameters["VALUES"] = parameterExtraction(input, iterator);
+
+            int val_counter = 0;
+            for (int i = 0; i < parameters["VALUES"].size(); i++)
+                if (parameters["VALUES"][i] != ")"
+                and parameters["VALUES"][i] != ","
+                and parameters["VALUES"][i] != "(") val_counter++;
+
+            if (val_counter % col_counter != 0) {
+                std::cout << R"(Syntax Error: different number of given values and columns in the table)";
+                exit(-1);
+            }
+        } else {
             std::cout << "Syntax Error: Keyword expected";
             exit(-1);
         }

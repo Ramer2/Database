@@ -9,6 +9,7 @@ const std::regex Patterns::drop = std::regex("drop", std::regex_constants::icase
 const std::regex Patterns::alter = std::regex("alter", std::regex_constants::icase);
 const std::regex Patterns::truncate = std::regex("truncate", std::regex_constants::icase);
 const std::regex Patterns::insert = std::regex("insert", std::regex_constants::icase);
+const std::regex Patterns::values = std::regex("values", std::regex_constants::icase);
 const std::regex Patterns::update = std::regex("update", std::regex_constants::icase);
 const std::regex Patterns::del = std::regex("delete", std::regex_constants::icase);
 const std::regex Patterns::from = std::regex("from", std::regex_constants::icase);
