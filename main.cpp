@@ -1,7 +1,8 @@
 #include <bits/stdc++.h>
 #include "Table.h"
 #include "Patterns.h"
-#include "Checker.h"
+#include "Engine.h"
+#include "Database.h"
 
 auto lexicalAnalysis(std::string& str) {
     auto output = std::vector<std::string>();
@@ -23,36 +24,12 @@ auto lexicalAnalysis(std::string& str) {
     return output;
 }
 
-//auto syntaxCheck(std::vector<std::string> input) {
-//    auto parameters = std::map<std::string, std::vector<std::string>>();
-//    auto ast = std::vector<std::string>(); 
-//    if (std::regex_match(*input.begin(), Patterns::select)){
-//            std::cout << "select";
-//            ast.emplace_back("SELECT");
-//
-//        } else if (std::regex_match(*input.begin(), Patterns::create)) {
-//            std::cout << "create";
-//        } else if (std::regex_match(*input.begin(), Patterns::drop)) {
-//            std::cout << "drop";
-//        } else if (std::regex_match(*input.begin(), Patterns::alter)) {
-//            std::cout << "alter";
-//        } else if (std::regex_match(*input.begin(), Patterns::truncate)) {
-//            std::cout << "truncate";
-//        } else if (std::regex_match(*input.begin(), Patterns::insert)) {
-//            std::cout << "insert";
-//        } else if (std::regex_match(*input.begin(), Patterns::update)) {
-//            std::cout << "update";
-//        } else if (std::regex_match(*input.begin(), Patterns::del)) {
-//            std::cout << "delete";
-//        }
-//}
-
 int main() {
-    auto tables = std::map<std::string, Table>();
     while (true) {
         auto query = std::string();
         auto command = std::vector<std::string>();
-        std::getline(std::cin, query);
+//        std::getline(std::cin, query);
+        query = "CREATE TABLE employees (id INTEGER PRIMARY KEY, first_name NUMBER(20, 2) not null, last_name VARCHAR(75) NOT NULL, mid_name VARCHAR(50) NULL, dateofbirth DATE NOT NULL);";
         command = lexicalAnalysis(query);
 
         //output
@@ -60,13 +37,25 @@ int main() {
 //            std::cout << i << ". " << command[i] << std::endl;
 //        }
         std::cout << "----------------------------------------------------" << std::endl;
-        auto checker = Checker();
-        checker.syntaxCheck(command);
+        auto engine = Engine();
+        engine.codeRetrieval(command);
+        engine.completer();
+
+        //database output
+        int counter = 0;
+        for (auto const& el : Database::database) {
+            for (auto const& col : el.columns) {
+                std::cout << counter++ << ". " << col.first << " " << col.second << std::endl;
+            }
+        }
+
         return 0;
     }
 }
+//TODO: CREATE TABLE command (with readings of data type and nullable fields)
+//TODO: figure out how to store tables so that they are available everywhere in the project
 
-//TODO: think how (anf if) you can implement some sort of AST (abstract syntax tree). First thought: stack
-//TODO: move infinite if's (line ~32) to a separate function. I suppose this function will become the syntax check: done
-//TODO: make syntax check (haha, gl)
 //TODO: AST (abstract syntax tree). If you haven't lost your sanity before (wow), you will lose it here (as well as your anal virginity)
+//TODO: finish syntax check (haha, gl)
+
+//TODO: encapsulation (private fields, getters, setters) classes: table, row, engine

@@ -21,6 +21,14 @@ public:
     static const std::regex or_;
     static const std::regex and_;
     static const std::regex not_;
+    static const std::regex table;
+    static const std::regex integer;
+    static const std::regex varchar;
+    static const std::regex number;
+    static const std::regex primary;
+    static const std::regex key;
+    static const std::regex null;
+    static const std::regex date;
     //TODO: write regexes for or, and, not and some more
 };
 

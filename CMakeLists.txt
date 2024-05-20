@@ -10,6 +10,8 @@ add_executable(Database main.cpp
         Row.cpp
         Patterns.cpp
         Patterns.h
-        Checker.h
-        Checker.cpp
+        Engine.h
+        Engine.cpp
+        Database.h
+        Database.cpp
 )
