@@ -1,4 +1,3 @@
-#include <bits/stdc++.h>
 #include "Patterns.h"
 #include "Table.h"
 #include "Database.h"
@@ -49,7 +48,6 @@ private:
             //exit the program
             exit(-1);
         }
-
         while (from < input.size() and !(isKeyword(input[from]) && !isLogic(input[from]))) {
             if (input[from] == "," or input[from] == ";") {
                 from++;
@@ -58,28 +56,24 @@ private:
             parameterVector.push_back(input[from]);
             from++;
         }
-
         return parameterVector;
     }
 
     static auto parameterExtraction(std::vector<std::string>& input, int& from) {
         auto parameterVector = std::vector<std::string>();
-
         if (isKeyword(input[from])) {
             std::cout << "Syntax Error: found a keyword, parameter expected";
             //exit the program
             exit(-1);
         }
-
         while (from < input.size() and !isKeyword(input[from])) {
             if (input[from] == "," or input[from] == ";") {
                 from++;
                 continue;
             }
-            parameterVector.push_back(input[from]);
+            if (!input[from].empty()) parameterVector.push_back(input[from]);
             from++;
         }
-
         return parameterVector;
     }
 public:
@@ -97,7 +91,6 @@ public:
                 ast.emplace_back("INTO");
                 parameters["INTO"] = parameterExtraction(input, iterator);
             }
-
             if (std::regex_match(input[iterator], Patterns::from)) {
                 iterator++;
                 ast.emplace_back("FROM");
@@ -109,13 +102,11 @@ public:
                     ast.emplace_back("WHERE");
                     parameters["WHERE"] = specialParameterExtraction(input, iterator);
                 }
-
             } else {
                 std::cout << R"(Syntax Error: "FROM" or "INTO" expected)";
                 exit(-1);
             }
         } else if(std::regex_match(input[0], Patterns::insert)) {
-
             auto iterator = 1;
             //insert into
             if (!std::regex_match(input[iterator], Patterns::into)) {
@@ -123,7 +114,6 @@ public:
                 exit(-1);
             }
             iterator++;
-
             ast.emplace_back("INSERT_INTO");
             parameters["INSERT_INTO"] = parameterExtraction(input, iterator);
 
@@ -138,8 +128,8 @@ public:
                 exit(-1);
             }
             iterator++;
-
             ast.emplace_back("VALUES");
+
             parameters["VALUES"] = parameterExtraction(input, iterator);
 
             int val_counter = 0;
@@ -153,14 +143,13 @@ public:
                 exit(-1);
             }
         } else if(std::regex_match(input[0], Patterns::create)) {
-
             auto iterator = 1;
             if (!std::regex_match(input[iterator], Patterns::table)) {
                 std::cout << R"(Syntax Error: "TABLE" expected)";
                 exit(-1);
             }
-            iterator++;
 
+            iterator++;
             ast.emplace_back("CREATE_TABLE");
             parameters["CREATE_TABLE"] = specialParameterExtraction(input, iterator);
 
@@ -168,30 +157,11 @@ public:
             std::cout << "Syntax Error: Keyword expected";
             exit(-1);
         }
-
-        //output
-//        for(const auto& el : parameters) {
-//            int counter = 0;
-//            std::cout << (el.first + ":") << std::endl;
-//            for (const auto& inst : el.second) {
-//                std::cout << counter << ". " + inst << std::endl;
-//                counter++;
-//            }
-//        }
-
-        //ast output
-//        for (auto el : ast) {
-//            std::cout << el << std::endl;
-//        }
     }
 
-    //const std::map<std::string, std::vector<std::string>>& parameters, const std::vector<std::string>& ast
     auto completer() {
-
         auto cmd_iterator = 0;
         if (ast[cmd_iterator] == "CREATE_TABLE") {
-            cmd_iterator++;
-
             //respective parameters output
 //            int counter = 0;
 //            for (auto const& el : parameters["CREATE_TABLE"]) {
@@ -202,10 +172,6 @@ public:
             auto tableName = parameters["CREATE_TABLE"][iterator++];
             auto newTable = Table(tableName);
 
-            std::map<std::string, bool> columns;
-            std::map<std::string, std::string> dataType;
-            std::map<std::string, bool> nullable;
-
             while (iterator < parameters["CREATE_TABLE"].size() - 1) {
                 if (!(parameters["CREATE_TABLE"][iterator] == "," or parameters["CREATE_TABLE"][iterator] == "(" or parameters["CREATE_TABLE"][iterator] == ")")) {
 
@@ -213,18 +179,19 @@ public:
                     std::string column_name = parameters["CREATE_TABLE"][iterator];
                     iterator++;
 
+                    //i - integer, f - float, s - string
                     std::string type;
                     if (std::regex_match(parameters["CREATE_TABLE"][iterator], Patterns::integer)) {
                         type = "i";
                         iterator++;
                     } else if (std::regex_match(parameters["CREATE_TABLE"][iterator], Patterns::varchar)) {
-                        type = "v" + parameters["CREATE_TABLE"][iterator + 2];
+                        type = "s";
                         iterator += 4;
                     } else if (std::regex_match(parameters["CREATE_TABLE"][iterator], Patterns::number)) {
-                        type = "n" + parameters["CREATE_TABLE"][iterator + 2] + "/" + parameters["CREATE_TABLE"][iterator + 3];
+                        type = "f";
                         iterator += 5;
                     } else if (std::regex_match(parameters["CREATE_TABLE"][iterator], Patterns::date)) {
-                        type = "d";
+                        type = "s";
                         iterator++;
                     } else {
                         std::cout << "Syntax Error: unknown data type";
@@ -261,39 +228,70 @@ public:
                         exit(-1);
                     }
 
-                    //TODO: fix this sheiet
                     newTable.addColumn(column_name, type, null, pk);
                 } else iterator++;
             }
             Database::database.push_back(newTable);
         }
 
-//        CREATE TABLE employees (
-//                id            INTEGER         PRIMARY KEY,
-//                first_name    NUMBER(20, 2)   not null,
-//                last_name     VARCHAR(75)     not null,
-//                mid_name      VARCHAR(50)     not null,
-//                dateofbirth   DATE            not null
-//        );
+        if (ast[cmd_iterator] == "SELECT") {
+            cmd_iterator++;
+            std::cout << "not implemented";
+
+            if (ast[cmd_iterator] == "INTO") {
+                cmd_iterator++;
+                std::cout << "not implemented";
+            }
+
+            if (ast[cmd_iterator] == "FROM") {
+                cmd_iterator++;
+                std::cout << "not implemented";
+            }
+        } else if (ast[cmd_iterator] == "INSERT_INTO") {
+            cmd_iterator++;
+
+            auto iterator = 0;
+            std::string table_name = parameters["INSERT_INTO"][iterator++];
+
+            auto col_num = int();
+            for(auto const& table : Database::database) {
+                if (table.name == table_name) col_num = table.columns.size();
+            }
+
+            //check for number of columns
+            if ((parameters["INSERT_INTO"].size() - 2) > col_num) {// -2 cuz of the brackets at the beginning and at the end
+                std::cout << "Syntax Error: number of columns at the input is larger than in the table";
+                exit(-1);
+            }
+
+            //TODO: finish INSERT_INTO command
+
+            auto counter = 0;
+            std::cout << "insert_into" << std::endl;
+            while (iterator < parameters["INSERT_INTO"].size()) {
+                std::cout << counter << ". " << parameters["INSERT_INTO"][iterator] << std::endl;
+                iterator++;
+                counter++;
+            }
+
+            counter = 0;
+            iterator = 0;
+            std::cout << "\nvalues" << std::endl;
+            while (iterator < parameters["VALUES"].size()) {
+                std::cout << counter << ". " << parameters["VALUES"][iterator] << std::endl;
+                iterator++;
+                counter++;
+            }
 
 
-//        if (ast[cmd_iterator] == "SELECT") {
-//            cmd_iterator++;
-//
-//
-//            if (ast[cmd_iterator] == "INFO") {
-//                cmd_iterator++;
-//
-//            }
-//
-//            if (ast[cmd_iterator] == "FROM") {
-//                cmd_iterator++;
-//
-//            }
-//        } else if (ast[cmd_iterator] == "INSERT_INTO") {
-//            cmd_iterator++;
-//
-//        }
+
+//            std::cout << parameters["INSERT_INTO"][iterator] << "!!!";
+
+
+
+            //INSERT INTO table_name (col1, col2, col3) VALUES (val1, val2, val3), (val4, val5, val6);
+
+        }
     }
 };
 

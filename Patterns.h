@@ -1,4 +1,4 @@
-#include <bits/stdc++.h>
+#include <regex>
 
 #ifndef DATABASE_PATTERNS_H
 #define DATABASE_PATTERNS_H
