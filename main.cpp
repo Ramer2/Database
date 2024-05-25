@@ -6,7 +6,95 @@
 #include <filesystem>
 
 auto reader() {
+    auto dirPath = std::string("../tables");
+    for (auto const& file : std::filesystem::directory_iterator(dirPath)) {
+        std::ifstream table(file.path());
+        auto input = std::string();
+        auto lineCount = int();
 
+        {
+            auto line = std::string();
+            while (std::getline(table, line)) lineCount++;
+        }
+        table.clear();
+        table.seekg(0);
+
+        //reading table name
+        auto table_name = std::string();
+        table >> table_name;
+
+        //reading a set of column names
+        auto col_names = std::vector<std::string>();
+        while (table >> input and !(input == "1" or input == "0")) {
+            col_names.emplace_back(input);
+        }
+
+        //reading PKs
+        auto columns = std::map<std::string, bool>();
+        {
+            auto iterator = 0;
+            do {
+                if (input == "1")
+                    columns[col_names[iterator]] = true;
+                else
+                    columns[col_names[iterator]] = false;
+
+                table >> input;
+                iterator++;
+            } while (iterator < col_names.size());
+        }
+
+        //reading nullable fields
+        auto nullable = std::map<std::string, bool>();
+        {
+            auto iterator = 0;
+            do {
+                if (input == "1")
+                    nullable[col_names[iterator]] = true;
+                else
+                    nullable[col_names[iterator]] = false;
+
+                table >> input;
+                iterator++;
+            } while (iterator < col_names.size());
+        }
+
+        //reading dataTypes
+        auto dataType = std::vector<std::string>();
+        {
+            auto iterator = 0;
+            do {
+                dataType.emplace_back(input);
+                table >> input;
+                iterator++;
+            } while (iterator < col_names.size());
+        }
+
+        //creating a new table (without any rows)
+        auto newTable = Table(table_name, col_names, columns, nullable, dataType);
+
+        for (int i = 0; i < lineCount - 5; i++) {
+            auto row = std::vector<std::variant<int, float, std::string>>();
+            {
+                auto iterator = 0;
+                do {
+                    if (dataType[iterator] == "i") {
+                        row.emplace_back(std::stoi(input));
+                    } else if (dataType[iterator] == "f") {
+                        row.emplace_back(std::stof(input));
+                    } else {
+                        row.emplace_back(input);
+                    }
+                    table >> input;
+                    iterator++;
+                } while (iterator < col_names.size());
+            }
+            newTable.addRow(row);
+        }
+
+        Database::database.emplace_back(newTable);
+        table.close();
+    }
 }
 
 auto saver() {
@@ -31,8 +119,15 @@ auto saver() {
                 file << table.columns[el] << " ";
             file << '\n';
 
-            for (auto const& el : table.dataType)
+            //writing nullable columns
+            for (auto const& el : table.col_names)
+                file << table.nullable[el] << " ";
+            file << '\n';
+
+            //writing data types
+            for (auto const& el : table.dataType) {
                 file << el << " ";
+            }
             file << '\n';
 
             for (auto const& row : table.content) {
@@ -76,51 +171,31 @@ auto lexicalAnalysis(std::string& str) {
 }
 
 int main() {
+    reader();
     while (true) {
         auto query = std::string();
         auto command = std::vector<std::string>();
 //        std::getline(std::cin, query);
-        query = "CREATE TABLE employees (id INTEGER PRIMARY KEY, first_name VARCHAR(50) not null, last_name VARCHAR(75) NOT NULL, mid_name VARCHAR(50) NULL, dateofbirth DATE NOT NULL);";
-//        query = "INSERT INTO table_name (col1, col2, col3) VALUES (val1, val2, val3), (val4, val5, val6);";
-        command = lexicalAnalysis(query);
-        auto engine = Engine();
-        engine.codeRetrieval(command);
-        engine.completer();
+//        query = "CREATE TABLE employees (id INTEGER PRIMARY KEY, first_name VARCHAR(50) not null, last_name VARCHAR(75) NOT NULL, mid_name VARCHAR(50) NULL, dateofbirth DATE NOT NULL);";
+//        query = "INSERT INTO table_name.txt (col1, col2, col3) VALUES (val1, val2, val3), (val4, val5, val6);";
+//        command = lexicalAnalysis(query);
 
-        std::vector<std::variant<int, float, std::string>> input1;
-        input1.emplace_back(1);
-        input1.emplace_back("Oleksandr");
-        input1.emplace_back("null");
-        input1.emplace_back("Usyk");
-        input1.emplace_back("17.01.1987");
-        std::vector<std::variant<int, float, std::string>> input2;
-        input2.emplace_back(2);
-        input2.emplace_back("Tyson");
-        input2.emplace_back("Luke");
-        input2.emplace_back("Fury");
-        input2.emplace_back("12.08.1988");
+        //TODO: get rid of this
+//        auto engine = Engine();
+//        engine.codeRetrieval(command);
+//        engine.completer();
 
-        for (auto const& el : Database::database[0].dataType) {
-            std::cout << el << " ";
-        }
-        std::cout << std::endl;
 
         //database output
         int counter = 0;
         for (auto& table : Database::database) {
-            table.addRow(input1);
-            table.addRow(input2);
-            std::cout << counter++ << ". " << table.name;
+            std::cout << counter++ << ". " << table.name << std::endl;
         }
 
         saver();
-
         return 0;
     }
 }
-
-//TODO: implement saving
-//TODO: implement reading
 
 //TODO: encapsulation (private fields, getters, setters) classes: table, row, engine
 //TODO: finish the commands

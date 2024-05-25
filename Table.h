@@ -27,6 +27,15 @@ public:
         this->name = name;
     }
 
+    Table(std::string const& name, std::vector<std::string> const& col_names, std::map<std::string, bool> const& columns,
+          std::map<std::string, bool> const& nullable, std::vector<std::string> const& dataType) {
+        this->name = name;
+        this->col_names = col_names;
+        this->columns = columns;
+        this->nullable = nullable;
+        this->dataType = dataType;
+    }
+
     auto addColumn(std::string const& column_name, std::string const& type, bool const& null, bool const& pk) {
         columns[column_name] = pk;
         dataType.emplace_back(type);
@@ -34,14 +43,16 @@ public:
         col_names.push_back(column_name);
     }
 
-    //TODO: complete the functions below
     auto addRow(std::vector<std::variant<int, float, std::string>> const& input) {//add one Row
         content.emplace_back(input, dataType);
     }
 
+    //TODO: complete the function below
     auto addRows() {//add multiple Rows
 
     }
+
+    //TODO: print function
 };
 
 

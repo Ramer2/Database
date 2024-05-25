@@ -289,7 +289,7 @@ public:
 
 
 
-            //INSERT INTO table_name (col1, col2, col3) VALUES (val1, val2, val3), (val4, val5, val6);
+            //INSERT INTO table_name.txt (col1, col2, col3) VALUES (val1, val2, val3), (val4, val5, val6);
 
         }
     }
