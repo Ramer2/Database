@@ -1,7 +1,4 @@
-#include "Table.h"
-#include "Patterns.h"
 #include "Engine.h"
-#include "Database.h"
 #include <fstream>
 #include <filesystem>
 
@@ -89,7 +86,7 @@ auto reader() {
                     iterator++;
                 } while (iterator < col_names.size());
             }
-            newTable.addRow(row);
+            newTable.addFullRow(row);
         }
 
         Database::database.emplace_back(newTable);
@@ -130,8 +127,10 @@ auto saver() {
             }
             file << '\n';
 
+            //writing down rows
             for (auto const& row : table.content) {
                 for (int i = 0; i < row.attributes.size(); i++) {
+//                    std::cout << i << ". " << row.attributes[i]. << std::endl;
                     if (table.dataType[i] == "i") {
                         file << std::get<int>(row.attributes[i]) << " ";
                     } else if (table.dataType[i] == "f") {
@@ -144,6 +143,7 @@ auto saver() {
             }
             file.close();
         } catch (std::exception const& e) {
+            std::cout << e.what() << std::endl;
             std::cout << "Problem, while saving files. Contact your personal programmer.";
             exit(-1);
         }
@@ -176,26 +176,41 @@ int main() {
         auto query = std::string();
         auto command = std::vector<std::string>();
 //        std::getline(std::cin, query);
-//        query = "CREATE TABLE employees (id INTEGER PRIMARY KEY, first_name VARCHAR(50) not null, last_name VARCHAR(75) NOT NULL, mid_name VARCHAR(50) NULL, dateofbirth DATE NOT NULL);";
-//        query = "INSERT INTO table_name.txt (col1, col2, col3) VALUES (val1, val2, val3), (val4, val5, val6);";
-//        command = lexicalAnalysis(query);
+//        query = "CREATE TABLE employees (id INTEGER PRIMARY KEY, first_name VARCHAR(50) not null,  mid_name VARCHAR(50) NULL, last_name VARCHAR(75) NOT NULL, dateofbirth DATE NOT NULL);";
+        query = "INSERT INTO employees (id, first_name, last_name, dateofbirth) VALUES (1, Oleksandr, Usyk, 17.01.1987), (2, Tyson, Fury, 12.08.1988);";
+        command = lexicalAnalysis(query);
 
-        //TODO: get rid of this
-//        auto engine = Engine();
-//        engine.codeRetrieval(command);
-//        engine.completer();
-
+        Engine::codeRetrieval(command);
+        Engine::completer();
 
         //database output
-        int counter = 0;
-        for (auto& table : Database::database) {
-            std::cout << counter++ << ". " << table.name << std::endl;
-        }
+//        int counter = 0;
+//        for (auto& table : Database::database) {
+//            std::cout << counter++ << ". " << table.name << std::endl;
+//        }
 
         saver();
+
+//        for (auto const& table : Database::database) {
+//            for (auto const& row : table.content) {
+//                for (int i = 0; i < row.attributes.size(); i++) {
+//                    if (table.dataType[i] == "i") {
+//                        std::cout << std::get<int>(row.attributes[i]) << std::endl;
+//                    } else if (table.dataType[i] == "f") {
+//                        std::cout << std::get<float>(row.attributes[i]) << std::endl;
+//                    } else {
+//                        std::cout << std::get<std::string>(row.attributes[i]) << std::endl;
+//                    }
+//                }
+//            }
+//        }
+
         return 0;
     }
 }
 
+//TODO: implement DROP
+
 //TODO: encapsulation (private fields, getters, setters) classes: table, row, engine
+
 //TODO: finish the commands

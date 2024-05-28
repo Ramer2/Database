@@ -29,7 +29,6 @@ public:
     static const std::regex key;
     static const std::regex null;
     static const std::regex date;
-    //TODO: write regexes for or, and, not and some more
 };
 
 #endif //DATABASE_PATTERNS_H

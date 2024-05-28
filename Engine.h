@@ -12,8 +12,8 @@
 //syntax check, ast and completion of the code
 class Engine {
 private:
-    std::vector<std::string> ast; //abstract syntax tree (strictly the order)
-    std::map<std::string, std::vector<std::string>> parameters;
+    static std::vector<std::string> ast; //abstract syntax tree (strictly the order)
+    static std::map<std::string, std::vector<std::string>> parameters;
 
     static auto isKeyword(std::string& word) {
         return (std::regex_match(word, Patterns::select) or
@@ -77,7 +77,7 @@ private:
         return parameterVector;
     }
 public:
-    auto codeRetrieval(std::vector<std::string>& input) {
+    static auto codeRetrieval(std::vector<std::string>& input) {
 
         //select
         if (std::regex_match(input[0], Patterns::select)){
@@ -159,14 +159,9 @@ public:
         }
     }
 
-    auto completer() {
+    static auto completer() {
         auto cmd_iterator = 0;
         if (ast[cmd_iterator] == "CREATE_TABLE") {
-            //respective parameters output
-//            int counter = 0;
-//            for (auto const& el : parameters["CREATE_TABLE"]) {
-//                std::cout << counter++ << ". " << el << std::endl;
-//            }
 
             auto iterator = 0;
             auto tableName = parameters["CREATE_TABLE"][iterator++];
@@ -174,8 +169,6 @@ public:
 
             while (iterator < parameters["CREATE_TABLE"].size() - 1) {
                 if (!(parameters["CREATE_TABLE"][iterator] == "," or parameters["CREATE_TABLE"][iterator] == "(" or parameters["CREATE_TABLE"][iterator] == ")")) {
-
-                    //TODO: redo this sheiet (maybe try with functions)
                     std::string column_name = parameters["CREATE_TABLE"][iterator];
                     iterator++;
 
@@ -253,35 +246,102 @@ public:
             auto iterator = 0;
             std::string table_name = parameters["INSERT_INTO"][iterator++];
 
-            auto col_num = int();
-            for(auto const& table : Database::database) {
-                if (table.name == table_name) col_num = table.columns.size();
+            Table* thisTable;
+            for(auto& table : Database::database) {
+                if (table.name == table_name) thisTable = &table;
             }
 
+            auto col_num = thisTable->col_names.size();
+
             //check for number of columns
-            if ((parameters["INSERT_INTO"].size() - 2) > col_num) {// -2 cuz of the brackets at the beginning and at the end
+            if ((parameters["INSERT_INTO"].size() - 3) > col_num) {// -3 cuz of the brackets at the beginning and at the end and the table name at the beginning
                 std::cout << "Syntax Error: number of columns at the input is larger than in the table";
                 exit(-1);
             }
 
-            //TODO: finish INSERT_INTO command
-
-            auto counter = 0;
-            std::cout << "insert_into" << std::endl;
-            while (iterator < parameters["INSERT_INTO"].size()) {
-                std::cout << counter << ". " << parameters["INSERT_INTO"][iterator] << std::endl;
+            auto col_names = std::vector<std::string>();
+            iterator++;
+            while (iterator < parameters["INSERT_INTO"].size() - 1) {
+                col_names.emplace_back(parameters["INSERT_INTO"][iterator]);
                 iterator++;
-                counter++;
             }
 
-            counter = 0;
-            iterator = 0;
-            std::cout << "\nvalues" << std::endl;
-            while (iterator < parameters["VALUES"].size()) {
-                std::cout << counter << ". " << parameters["VALUES"][iterator] << std::endl;
-                iterator++;
-                counter++;
+            //check for columns
+            if (!(col_names == thisTable->col_names)) {
+                //advanced comparing
+                bool isAmongParams = false;
+                for (auto const& col : thisTable->col_names) {
+                    for (auto const& param : col_names) {
+                        if (col == param) isAmongParams = true;
+                    }
+                    if (!isAmongParams and !thisTable->nullable[col]) {
+                        std::cout << "Syntax error: unknown column or not defined non-nullable column";
+                        exit(-1);
+                    }
+                    isAmongParams = false;
+                }
             }
+
+            //TODO: fix getting the data
+            auto place = 0;
+            auto row = std::vector<std::variant<int, float, std::string>>();
+            for (auto const& el : parameters["VALUES"]) {
+                if (el == "(") {
+                    continue;
+                } else if (el == ")") {
+                    place = 0;
+                    //TODO: fix this
+                    thisTable->addPartialRow(row, col_names);
+                    row.clear();
+                } else {
+                    auto thisColPlace = int();
+                    //doesnt work for some reason
+                    for (int i = 0; i < thisTable->col_names.size(); i++) {
+                        if (col_names[place] == thisTable->col_names[i]) {
+                            thisColPlace = i;
+                            break;
+                        }
+                    }
+                    auto type = thisTable->dataType[thisColPlace];
+
+                    //I hope that I'm dealing with a responsible user who will not put something like "3.14afsdga" for a
+                    // float column (stof and stoi don't crash, the information is simply lost)
+                    if (type == "i") {
+                        row.emplace_back(std::stoi(el));
+                    } else if (type == "f") {
+                        row.emplace_back(std::stof(el));
+                    } else {
+                        row.emplace_back(el);
+                    }
+                    place++;
+                }
+            }
+
+//            for (auto const& el : col_names) {
+//                std::cout << el << " ";
+//            }
+//            ( val1 val2 val3 val4 ) ( val5 val6 val7 val8 )
+
+
+            //output (delete later)
+//            auto counter = 0;
+//            std::cout << "insert_into" << std::endl;
+//            while (iterator < parameters["INSERT_INTO"].size()) {
+//                std::cout << counter << ". " << parameters["INSERT_INTO"][iterator] << std::endl;
+//                iterator++;
+//                counter++;
+//            }
+//
+//            counter = 0;
+//            iterator = 0;
+//            std::cout << "\nvalues" << std::endl;
+//            while (iterator < parameters["VALUES"].size()) {
+//                std::cout << counter << ". " << parameters["VALUES"][iterator] << std::endl;
+//                iterator++;
+//                counter++;
+//            }
+
+
 
 
 

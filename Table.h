@@ -3,6 +3,8 @@
 
 #include "Row.h"
 #include <map>
+#include <fmt/core.h>
+#include <fmt/ranges.h>
 
 
 class Table {
@@ -43,16 +45,18 @@ public:
         col_names.push_back(column_name);
     }
 
-    auto addRow(std::vector<std::variant<int, float, std::string>> const& input) {//add one Row
+    auto addFullRow(std::vector<std::variant<int, float, std::string>> const& input) {//add one Row
         content.emplace_back(input, dataType);
     }
 
-    //TODO: complete the function below
-    auto addRows() {//add multiple Rows
-
+    auto addPartialRow(std::vector<std::variant<int, float, std::string>> const& input, std::vector<std::string> const& cols) {
+        content.emplace_back(input, cols, dataType, col_names);
     }
 
     //TODO: print function
+    auto print() {
+
+    }
 };
 
 
