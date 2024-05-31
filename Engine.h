@@ -153,6 +153,14 @@ public:
             ast.emplace_back("CREATE_TABLE");
             parameters["CREATE_TABLE"] = specialParameterExtraction(input, iterator);
 
+        } else if (std::regex_match(input[0], Patterns::drop)) {
+            if (std::regex_match(input[1], Patterns::table)) {
+                ast.emplace_back("DROP_TABLE");
+                parameters["DROP_TABLE"].emplace_back(input[2]);
+            } else {
+                std::cout << "Syntax Error: \"table\" keyword expected";
+                exit(-1);
+            }
         } else {
             std::cout << "Syntax Error: Keyword expected";
             exit(-1);
@@ -225,9 +233,7 @@ public:
                 } else iterator++;
             }
             Database::database.push_back(newTable);
-        }
-
-        if (ast[cmd_iterator] == "SELECT") {
+        } else if (ast[cmd_iterator] == "SELECT") {
             cmd_iterator++;
             std::cout << "not implemented";
 
@@ -282,7 +288,6 @@ public:
                 }
             }
 
-            //TODO: fix getting the data
             auto place = 0;
             auto row = std::vector<std::variant<int, float, std::string>>();
             for (auto const& el : parameters["VALUES"]) {
@@ -290,7 +295,6 @@ public:
                     continue;
                 } else if (el == ")") {
                     place = 0;
-                    //TODO: fix this
                     thisTable->addPartialRow(row, col_names);
                     row.clear();
                 } else {
@@ -316,41 +320,19 @@ public:
                     place++;
                 }
             }
+        } else if (ast[cmd_iterator] == "DROP_TABLE") {
+            cmd_iterator++;
 
-//            for (auto const& el : col_names) {
-//                std::cout << el << " ";
-//            }
-//            ( val1 val2 val3 val4 ) ( val5 val6 val7 val8 )
-
-
-            //output (delete later)
-//            auto counter = 0;
-//            std::cout << "insert_into" << std::endl;
-//            while (iterator < parameters["INSERT_INTO"].size()) {
-//                std::cout << counter << ". " << parameters["INSERT_INTO"][iterator] << std::endl;
-//                iterator++;
-//                counter++;
-//            }
-//
-//            counter = 0;
-//            iterator = 0;
-//            std::cout << "\nvalues" << std::endl;
-//            while (iterator < parameters["VALUES"].size()) {
-//                std::cout << counter << ". " << parameters["VALUES"][iterator] << std::endl;
-//                iterator++;
-//                counter++;
-//            }
-
-
-
-
-
-//            std::cout << parameters["INSERT_INTO"][iterator] << "!!!";
-
-
-
-            //INSERT INTO table_name.txt (col1, col2, col3) VALUES (val1, val2, val3), (val4, val5, val6);
-
+            auto iterator = Database::database.begin();
+            while (iterator != Database::database.end()){
+                if ((*iterator).name == parameters["DROP_TABLE"][0]) {
+                    Database::database.erase(iterator);
+                    return;
+                }
+                iterator++;
+            }
+            std::cout << "Syntax Error: table " << parameters["DROP_TABLE"][0] << " wasn't found";
+            exit(-1);
         }
     }
 };

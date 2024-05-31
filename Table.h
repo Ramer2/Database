@@ -8,6 +8,28 @@
 
 
 class Table {
+private:
+    auto PKcheck(std::vector<std::variant<int, float, std::string>> const& input) {
+        auto pkColumnsIndexes = std::vector<int>();
+        auto inputComparingVector = std::vector<std::variant<int, float, std::string>>();
+        for (int i = 0; i < col_names.size(); i++) {
+            if (columns[col_names[i]]) {
+                pkColumnsIndexes.emplace_back(i);
+                inputComparingVector.emplace_back(input[i]);
+            }
+        }
+
+        for (auto const& row : content) {
+            auto existingComparingVector = std::vector<std::variant<int, float, std::string>>();
+            for (auto const& el : pkColumnsIndexes) {
+                existingComparingVector.push_back(row.attributes[el]);
+            }
+            if (inputComparingVector == existingComparingVector) {
+                std::cout << "Syntax Error: duplicate primary keys";
+                exit(-1);
+            }
+        }
+    }
 public:
     std::string name;
     //vector for keeping the correct order of columns (key set)
@@ -46,10 +68,14 @@ public:
     }
 
     auto addFullRow(std::vector<std::variant<int, float, std::string>> const& input) {//add one Row
+        //primary key check
+        PKcheck(input);
         content.emplace_back(input, dataType);
     }
 
     auto addPartialRow(std::vector<std::variant<int, float, std::string>> const& input, std::vector<std::string> const& cols) {
+        //primary key check
+        PKcheck(input);
         content.emplace_back(input, cols, dataType, col_names);
     }
 

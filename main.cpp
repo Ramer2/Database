@@ -177,7 +177,9 @@ int main() {
         auto command = std::vector<std::string>();
 //        std::getline(std::cin, query);
 //        query = "CREATE TABLE employees (id INTEGER PRIMARY KEY, first_name VARCHAR(50) not null,  mid_name VARCHAR(50) NULL, last_name VARCHAR(75) NOT NULL, dateofbirth DATE NOT NULL);";
-        query = "INSERT INTO employees (id, first_name, last_name, dateofbirth) VALUES (1, Oleksandr, Usyk, 17.01.1987), (2, Tyson, Fury, 12.08.1988);";
+//        query = "INSERT INTO employees (id, first_name, last_name, dateofbirth) VALUES (1, Oleksandr, Usyk, 17.01.1987), (2, Tyson, Fury, 12.08.1988);";
+//        query = "DROP TABLE employees;";
+        query = "SELECT;";
         command = lexicalAnalysis(query);
 
         Engine::codeRetrieval(command);
@@ -209,7 +211,18 @@ int main() {
     }
 }
 
-//TODO: implement DROP
+//employees
+//id first_name mid_name last_name dateofbirth
+//1 0 0 0 0
+//0 0 1 0 0
+//i s s s s
+//1 Oleksandr null Usyk 17.01.1987
+//2 Tyson null Fury 12.08.1988
+
+//TODO: write the print function in Table.h
+
+//TODO: implement SELECT ... FROM ... (without condition, for now)
+//idea: try to do this with creating new tables
 
 //TODO: encapsulation (private fields, getters, setters) classes: table, row, engine
 
