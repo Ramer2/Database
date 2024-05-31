@@ -6,7 +6,6 @@
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
-
 class Table {
 private:
     auto PKcheck(std::vector<std::variant<int, float, std::string>> const& input) {
@@ -79,9 +78,74 @@ public:
         content.emplace_back(input, cols, dataType, col_names);
     }
 
-    //TODO: print function
     auto print() {
-
+        auto length = col_names.size() * 15 + (col_names.size() + 1);
+        //top line
+        for (int i = 0; i < length; i++) {
+            if (i == 0) {
+                fmt::print("\n┌");
+            } else if (i == length - 1) {
+                fmt::print("┐\n");
+            } else if (i % 16 == 0) {
+                fmt::print("┬");
+            } else {
+                fmt::print("─");
+            }
+        }
+        fmt::print("│");
+        for (auto const& col : col_names) {
+            if (columns[col]) {
+                fmt::print("{:^15}│", (col + "*"));
+            } else {
+                fmt::print("{:^15}│", col);
+            }
+        }
+        for (auto const& row : content) {
+            //horizontal line
+            for (int i = 0; i < length; i++) {
+                if (i == 0) {
+                    fmt::print("\n├");
+                } else if (i == length - 1) {
+                    fmt::print("┤\n");
+                } else if (i % 16 == 0) {
+                    fmt::print("┼");
+                } else {
+                    fmt::print("─");
+                }
+            }
+            fmt::print("│");
+            auto counter = int();
+            for (auto const& el : row.attributes) {
+                counter++;
+                auto index = el.index();
+                switch (index) {
+                    case 0: {
+                        fmt::print("{:15}│", std::get<int>(el));
+                        break;
+                    }
+                    case 1: {
+                        fmt::print("{:15}│", std::get<float>(el));
+                        break;
+                    }
+                    default: {
+                        fmt::print("{:15}│", std::get<std::string>(el));
+                        break;
+                    }
+                }
+            }
+        }
+        //bottom line
+        for (int i = 0; i < length; i++) {
+            if (i == 0) {
+                fmt::print("\n└");
+            } else if (i == length - 1) {
+                fmt::print("┘\n");
+            } else if (i % 16 == 0) {
+                fmt::print("┴");
+            } else {
+                fmt::print("─");
+            }
+        }
     }
 };
 
