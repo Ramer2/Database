@@ -205,8 +205,6 @@ int main() {
 //1 Oleksandr null Usyk 17.01.1987
 //2 Tyson null Fury 12.08.1988
 
-//TODO: write the print function in Table.h
-
 //TODO: implement SELECT ... FROM ... (without condition, for now)
 //idea: try to do this with creating new tables
 
