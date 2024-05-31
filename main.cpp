@@ -175,22 +175,15 @@ int main() {
     while (true) {
         auto query = std::string();
         auto command = std::vector<std::string>();
-//        std::getline(std::cin, query);
+        std::getline(std::cin, query);
 //        query = "CREATE TABLE employees (id INTEGER PRIMARY KEY, first_name VARCHAR(50) not null,  mid_name VARCHAR(50) NULL, last_name VARCHAR(75) NOT NULL, dateofbirth DATE NOT NULL);";
 //        query = "INSERT INTO employees (id, first_name, last_name, dateofbirth) VALUES (1, Oleksandr, Usyk, 17.01.1987), (2, Tyson, Fury, 12.08.1988);";
 //        query = "DROP TABLE employees;";
-//        query = "SELECT;";
-//        command = lexicalAnalysis(query);
+//        query = "SELECT * FROM employees, something;";
+        command = lexicalAnalysis(query);
 
-//        Engine::codeRetrieval(command);
-//        Engine::completer();
-
-        //database output
-//        int counter = 0;
-//        for (auto& table : Database::database) {
-//            std::cout << counter++ << ". " << table.name << std::endl;
-//        }
-        Database::database[0].print();
+        Engine::codeRetrieval(command);
+        Engine::completer();
         saver();
 
         return 0;

@@ -76,6 +76,7 @@ private:
         }
         return parameterVector;
     }
+
 public:
     static auto codeRetrieval(std::vector<std::string>& input) {
 
@@ -95,6 +96,8 @@ public:
                 iterator++;
                 ast.emplace_back("FROM");
                 parameters["FROM"] = parameterExtraction(input, iterator);
+
+                if (iterator == input.size()) return;
 
                 //where
                 if (std::regex_match(input[iterator], Patterns::where)) {
@@ -235,7 +238,7 @@ public:
             Database::database.push_back(newTable);
         } else if (ast[cmd_iterator] == "SELECT") {
             cmd_iterator++;
-            std::cout << "not implemented";
+//            fmt::println("{}", parameters["SELECT"]);
 
             if (ast[cmd_iterator] == "INTO") {
                 cmd_iterator++;
@@ -244,7 +247,56 @@ public:
 
             if (ast[cmd_iterator] == "FROM") {
                 cmd_iterator++;
-                std::cout << "not implemented";
+                auto reqTables = std::vector<Table>();
+                for (auto const& name : parameters["FROM"]) {
+                    bool found = false;
+                    for (auto const& table : Database::database) {
+                        if (name == table.name) {
+                            reqTables.push_back(table);
+                            found = true;
+                        }
+                    }
+                    if (!found) {
+                        std::cout << "Syntax Error: unknown table " << name;
+                        exit(-1);
+                    }
+                }
+
+                if (parameters["SELECT"][0] == "*") {
+                    if (reqTables.size() == 1) {
+                        reqTables[0].print();
+                    } else {
+                        //creating temporary table to print
+                        auto tmpCol_Names = std::vector<std::string>();
+                        auto tmpColumns = std::map<std::string, bool>();
+                        auto tmpNullable = std::map<std::string, bool>();
+                        auto tmpDataType = std::vector<std::string>();
+                        auto tmpContent = std::vector<Row>();
+
+                        for (auto const& table : reqTables) {
+                            tmpCol_Names.insert(tmpCol_Names.end(),table.col_names.begin(), table.col_names.end());
+                            tmpColumns.insert(table.columns.begin(), table.columns.end());
+                            tmpNullable.insert(table.nullable.begin(), table.nullable.end());
+                            tmpDataType.insert(tmpDataType.end(), table.dataType.begin(), table.dataType.end());
+
+                            //content combination
+                            if (tmpContent.empty()) {
+                                tmpContent.insert(tmpContent.end(), table.content.begin(), table.content.end());
+                            } else {
+                                auto prevContent = tmpContent;
+                                tmpContent.clear();
+                                for (auto const& prevRow : prevContent) {
+                                    for (auto const& row : table.content) {
+                                        auto copyPrevRow = prevRow;
+                                        copyPrevRow.attributes.insert(copyPrevRow.attributes.end(), row.attributes.begin(), row.attributes.end());
+                                        tmpContent.emplace_back(copyPrevRow);
+                                    }
+                                }
+                            }
+                        }
+                        Table("tmp", tmpCol_Names, tmpColumns, tmpNullable, tmpDataType, tmpContent).print();
+                    }
+                }
             }
         } else if (ast[cmd_iterator] == "INSERT_INTO") {
             cmd_iterator++;

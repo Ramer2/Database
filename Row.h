@@ -13,6 +13,10 @@ class Row {
     public:
     std::vector<dataType> attributes;
 
+    explicit Row(std::vector<dataType> const& attributes) {
+        this->attributes = attributes;
+    }
+
     Row(std::vector<dataType> const& input, std::vector<std::string> types) {
         if (input.size() != types.size()) {
             std::cout << "Internal error: Row constructor.";
