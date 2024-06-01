@@ -247,6 +247,15 @@ public:
 
             if (ast[cmd_iterator] == "FROM") {
                 cmd_iterator++;
+
+                //creating temporary table to print
+                Table outputTable = Table("temp");
+                auto tmpCol_Names = std::vector<std::string>();
+                auto tmpColumns = std::map<std::string, bool>();
+                auto tmpNullable = std::map<std::string, bool>();
+                auto tmpDataType = std::vector<std::string>();
+                auto tmpContent = std::vector<Row>();
+
                 auto reqTables = std::vector<Table>();
                 for (auto const& name : parameters["FROM"]) {
                     bool found = false;
@@ -266,13 +275,6 @@ public:
                     if (reqTables.size() == 1) {
                         reqTables[0].print();
                     } else {
-                        //creating temporary table to print
-                        auto tmpCol_Names = std::vector<std::string>();
-                        auto tmpColumns = std::map<std::string, bool>();
-                        auto tmpNullable = std::map<std::string, bool>();
-                        auto tmpDataType = std::vector<std::string>();
-                        auto tmpContent = std::vector<Row>();
-
                         for (auto const& table : reqTables) {
                             tmpCol_Names.insert(tmpCol_Names.end(),table.col_names.begin(), table.col_names.end());
                             tmpColumns.insert(table.columns.begin(), table.columns.end());
@@ -294,9 +296,100 @@ public:
                                 }
                             }
                         }
-                        Table("tmp", tmpCol_Names, tmpColumns, tmpNullable, tmpDataType, tmpContent).print();
+                        outputTable.col_names = tmpCol_Names;
+                        outputTable.columns = tmpColumns;
+                        outputTable.nullable = tmpNullable;
+                        outputTable.dataType = tmpDataType;
+                        outputTable.content = tmpContent;
                     }
+                } else {
+                    //check for column availability among tables
+                    for (auto const& checkCol : parameters["SELECT"]) {
+                        bool found = false;
+                        for (auto const& table : reqTables) {
+                            for (auto const& col : table.col_names) {
+                                if (checkCol == col) {
+                                    found = true;
+                                    tmpCol_Names.emplace_back(checkCol);
+                                }
+                            }
+                        }
+                        if (!found) {
+                            std::cout << "Syntax Error: column " << checkCol << " was not found among listed tables";
+                            exit(-1);
+                        }
+                    }
+
+                    for (auto const& table : reqTables) {
+
+                        for (auto const& tmpCol : tmpCol_Names) {
+                            for (auto const& col : table.columns) {
+                                if (col.first == tmpCol) {
+                                    tmpColumns[tmpCol] = col.second;
+                                }
+                            }
+                        }
+
+                        for (auto const& tmpCol : tmpCol_Names) {
+                            for (auto const& col : table.nullable) {
+                                if (col.first == tmpCol) {
+                                    tmpNullable[tmpCol] = col.second;
+                                }
+                            }
+                        }
+
+                        for (auto const& tmpCol : tmpCol_Names) {
+                            int pos = 0;
+                            while (pos < table.col_names.size()) {
+                                if (tmpCol == table.col_names[pos]) break;
+                                pos++;
+                            }
+                            tmpDataType.emplace_back(table.dataType[pos]);
+                        }
+
+                        auto indexVector = std::vector<int>(); //set, so there's no duplications
+                        for (auto const& tmpCol : tmpCol_Names) {
+                            for (int i = 0; i < table.col_names.size(); i++) {
+                                if (table.col_names[i] == tmpCol) indexVector.emplace_back(i);
+                            }
+                        }
+
+                        //solution, provided by ChatGPT on "c++: how to get rid of duplicates in the vector of ints"
+                        //omg, this fix worked. I thought I'll have to rewrite this whole loop
+                        auto last = std::unique(indexVector.begin(), indexVector.end());
+                        indexVector.erase(last, indexVector.end());
+
+                        if (tmpContent.empty()) {
+                            for (auto const& row : table.content) {
+                                auto tmpAttributes = std::vector<std::variant<int, float, std::string>>();
+                                for (auto index : indexVector) {
+                                    tmpAttributes.emplace_back(row.attributes[index]);
+                                }
+                                tmpContent.emplace_back(tmpAttributes);
+                            }
+                        } else {
+                            auto prevContent = tmpContent;
+                            tmpContent.clear();
+                            for (auto const& prevRow : prevContent) {
+                                for (auto const& row : table.content) {
+                                    auto prevRowAttributes = prevRow.attributes;
+                                    auto tmpAttributes = std::vector<std::variant<int, float, std::string>>();
+                                    for (auto index : indexVector) {
+                                        prevRowAttributes.emplace_back(row.attributes[index]);
+                                    }
+                                    tmpContent.emplace_back(prevRowAttributes);
+                                }
+                            }
+                        }
+                    }
+
+                    outputTable.col_names = tmpCol_Names;
+                    outputTable.columns = tmpColumns;
+                    outputTable.nullable = tmpNullable;
+                    outputTable.dataType = tmpDataType;
+                    outputTable.content = tmpContent;
                 }
+                outputTable.print();
             }
         } else if (ast[cmd_iterator] == "INSERT_INTO") {
             cmd_iterator++;

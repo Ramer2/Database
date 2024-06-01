@@ -175,11 +175,11 @@ int main() {
     while (true) {
         auto query = std::string();
         auto command = std::vector<std::string>();
-        std::getline(std::cin, query);
+//        std::getline(std::cin, query);
 //        query = "CREATE TABLE employees (id INTEGER PRIMARY KEY, first_name VARCHAR(50) not null,  mid_name VARCHAR(50) NULL, last_name VARCHAR(75) NOT NULL, dateofbirth DATE NOT NULL);";
 //        query = "INSERT INTO employees (id, first_name, last_name, dateofbirth) VALUES (1, Oleksandr, Usyk, 17.01.1987), (2, Tyson, Fury, 12.08.1988);";
 //        query = "DROP TABLE employees;";
-//        query = "SELECT * FROM employees, something;";
+        query = "SELECT first_name FROM employees, something;";
         command = lexicalAnalysis(query);
 
         Engine::codeRetrieval(command);
@@ -198,8 +198,8 @@ int main() {
 //1 Oleksandr null Usyk 17.01.1987
 //2 Tyson null Fury 12.08.1988
 
-//TODO: implement SELECT ... FROM ... (without condition, for now)
-//idea: try to do this with creating new tables
+//TODO: finish select for custom columns
+//TODO: implement conditions
 
 //TODO: encapsulation (private fields, getters, setters) classes: table, row, engine
 
