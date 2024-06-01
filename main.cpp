@@ -157,11 +157,12 @@ auto lexicalAnalysis(std::string& str) {
         if (symbol == ' ') {
             if (!word.empty()) output.push_back(word);
             word = "";
-        } else if (symbol == ',' or symbol == ';' or symbol == '(' or symbol == ')') {
+        } else if (symbol == ',' or symbol == ';' or symbol == '(' or symbol == ')' or symbol == '\'') {
             if (!word.empty()) output.push_back(word);
             if (symbol == ',') output.emplace_back(",");
             else if (symbol == ';') output.emplace_back(";");
             else if (symbol == '(') output.emplace_back("(");
+            else if (symbol == '\'');
             else output.emplace_back(")");
             word = "";
         } else word += symbol;
@@ -179,7 +180,7 @@ int main() {
 //        query = "CREATE TABLE employees (id INTEGER PRIMARY KEY, first_name VARCHAR(50) not null,  mid_name VARCHAR(50) NULL, last_name VARCHAR(75) NOT NULL, dateofbirth DATE NOT NULL);";
 //        query = "INSERT INTO employees (id, first_name, last_name, dateofbirth) VALUES (1, Oleksandr, Usyk, 17.01.1987), (2, Tyson, Fury, 12.08.1988);";
 //        query = "DROP TABLE employees;";
-        query = "SELECT first_name FROM employees, something;";
+        query = "SELECT first_name, last_name, id, dateofbirth FROM employees WHERE first_name = 'OLEKSANDR' AND id > 2;";
         command = lexicalAnalysis(query);
 
         Engine::codeRetrieval(command);
@@ -198,7 +199,6 @@ int main() {
 //1 Oleksandr null Usyk 17.01.1987
 //2 Tyson null Fury 12.08.1988
 
-//TODO: finish select for custom columns
 //TODO: implement conditions
 
 //TODO: encapsulation (private fields, getters, setters) classes: table, row, engine

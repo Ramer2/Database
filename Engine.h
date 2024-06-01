@@ -15,6 +15,14 @@ private:
     static std::vector<std::string> ast; //abstract syntax tree (strictly the order)
     static std::map<std::string, std::vector<std::string>> parameters;
 
+    static auto toLowerCase(std::string const& str) {
+        auto newString = std::string();
+        for (auto& letter : str) {
+            newString += std::tolower(letter);
+        }
+        return newString;
+    }
+
     static auto isKeyword(std::string& word) {
         return (std::regex_match(word, Patterns::select) or
                 std::regex_match(word, Patterns::update) or
@@ -75,6 +83,70 @@ private:
             from++;
         }
         return parameterVector;
+    }
+
+    static auto conditionCheck (std::vector<std::string> const& dataType, int const& index, std::string const& logicOperator,
+                                bool const& negated, std::string const& parameter, Row const& row) {
+        std::cout << index << std::endl;
+        if (dataType[index] == "i") {
+            auto val1 = std::get<int>(row.attributes[index]);
+            auto val2 = std::stoi(parameter);
+
+            if (!negated) {
+                if ((logicOperator == "=" and val1 == val2) or
+                    (logicOperator == "!=" and val1 != val2) or
+                    (logicOperator == ">" and val1 > val2) or
+                    (logicOperator == "<" and val1 < val2) or
+                    (logicOperator == ">=" and val1 >= val2) or
+                    (logicOperator == "<=" and val1 <= val2)) return true;
+            } else {
+                if (!((logicOperator == "=" and val1 == val2) or
+                      (logicOperator == "!=" and val1 != val2) or
+                      (logicOperator == ">" and val1 > val2) or
+                      (logicOperator == "<" and val1 < val2) or
+                      (logicOperator == ">=" and val1 >= val2) or
+                      (logicOperator == "<=" and val1 <= val2))) return true;
+            }
+        } else if (dataType[index] == "f") {
+            auto val1 = std::get<float>(row.attributes[index]);
+            auto val2 = std::stof(parameter);
+            if (!negated) {
+                if ((logicOperator == "=" and val1 == val2) or
+                    (logicOperator == "!=" and val1 != val2) or
+                    (logicOperator == ">" and val1 > val2) or
+                    (logicOperator == "<" and val1 < val2) or
+                    (logicOperator == ">=" and val1 >= val2) or
+                    (logicOperator == "<=" and val1 <= val2)) return true;
+            } else {
+                if (!((logicOperator == "=" and val1 == val2) or
+                      (logicOperator == "!=" and val1 != val2) or
+                      (logicOperator == ">" and val1 > val2) or
+                      (logicOperator == "<" and val1 < val2) or
+                      (logicOperator == ">=" and val1 >= val2) or
+                      (logicOperator == "<=" and val1 <= val2))) return true;
+            }
+        } else {
+            auto val1 = std::get<std::string>(row.attributes[index]);
+            auto val2 = parameter;
+            val1 = toLowerCase(val1);
+            val2 = toLowerCase(val2);
+            if (!negated) {
+                if ((logicOperator == "=" and val1 == val2) or
+                    (logicOperator == "!=" and val1 != val2) or
+                    (logicOperator == ">" and val1 > val2) or
+                    (logicOperator == "<" and val1 < val2) or
+                    (logicOperator == ">=" and val1 >= val2) or
+                    (logicOperator == "<=" and val1 <= val2)) return true;
+            } else {
+                if (!((logicOperator == "=" and val1 == val2) or
+                      (logicOperator == "!=" and val1 != val2) or
+                      (logicOperator == ">" and val1 > val2) or
+                      (logicOperator == "<" and val1 < val2) or
+                      (logicOperator == ">=" and val1 >= val2) or
+                      (logicOperator == "<=" and val1 <= val2))) return true;
+            }
+        }
+        return false;
     }
 
 public:
@@ -238,12 +310,11 @@ public:
             Database::database.push_back(newTable);
         } else if (ast[cmd_iterator] == "SELECT") {
             cmd_iterator++;
-//            fmt::println("{}", parameters["SELECT"]);
 
-            if (ast[cmd_iterator] == "INTO") {
-                cmd_iterator++;
-                std::cout << "not implemented";
-            }
+//            if (ast[cmd_iterator] == "INTO") {
+//                cmd_iterator++;
+//                std::cout << "not implemented";
+//            }
 
             if (ast[cmd_iterator] == "FROM") {
                 cmd_iterator++;
@@ -321,7 +392,6 @@ public:
                     }
 
                     for (auto const& table : reqTables) {
-
                         for (auto const& tmpCol : tmpCol_Names) {
                             for (auto const& col : table.columns) {
                                 if (col.first == tmpCol) {
@@ -347,7 +417,7 @@ public:
                             tmpDataType.emplace_back(table.dataType[pos]);
                         }
 
-                        auto indexVector = std::vector<int>(); //set, so there's no duplications
+                        auto indexVector = std::vector<int>();
                         for (auto const& tmpCol : tmpCol_Names) {
                             for (int i = 0; i < table.col_names.size(); i++) {
                                 if (table.col_names[i] == tmpCol) indexVector.emplace_back(i);
@@ -389,7 +459,125 @@ public:
                     outputTable.dataType = tmpDataType;
                     outputTable.content = tmpContent;
                 }
-                outputTable.print();
+
+                if (cmd_iterator == ast.size()) {
+                    outputTable.print();
+                    return;
+                } else {
+                    if (!std::regex_match(ast[cmd_iterator], Patterns::where)) {
+                        std::cout << "Syntax Error: unknown keyword" << ast[cmd_iterator];
+                        exit(-1);
+                    }
+
+                    auto iterator = 0;
+                    if (parameters["WHERE"].size() > 4) {
+                        auto mainOperator = std::string();
+
+                        bool negated1 = false;
+                        if (std::regex_match(parameters["WHERE"][iterator], Patterns::not_)) {
+                            negated1 = true;
+                            iterator++;
+                        }
+
+                        auto reqCol1 = parameters["WHERE"][iterator++];
+                        auto logicOperator1 = parameters["WHERE"][iterator++];
+                        auto parameter1 = parameters["WHERE"][iterator++];
+
+                        if (!(logicOperator1 == "=" or logicOperator1 == "!=" or logicOperator1 == "<"
+                              or logicOperator1 == ">" or logicOperator1 == ">=" or logicOperator1 == "<=")) {
+                            std::cout << "Syntax Error: unknown operator " << logicOperator1;
+                            exit(-1);
+                        }
+
+                        auto index1 = int();
+                        for (int i = 0; i < outputTable.col_names.size(); i++) {
+                            if (outputTable.col_names[i] == reqCol1) {
+                                index1 = i;
+                                break;
+                            }
+                        }
+
+                        mainOperator = parameters["WHERE"][iterator++];
+
+                        bool negated2 = false;
+                        if (std::regex_match(parameters["WHERE"][iterator], Patterns::not_)) {
+                            negated1 = true;
+                            iterator++;
+                        }
+
+                        auto reqCol2 = parameters["WHERE"][iterator++];
+                        auto logicOperator2 = parameters["WHERE"][iterator++];
+                        auto parameter2 = parameters["WHERE"][iterator++];
+
+                        if (!(logicOperator1 == "=" or logicOperator1 == "!=" or logicOperator1 == "<"
+                              or logicOperator1 == ">" or logicOperator1 == ">=" or logicOperator1 == "<=")) {
+                            std::cout << "Syntax Error: unknown operator " << logicOperator1;
+                            exit(-1);
+                        }
+
+                        auto index2 = int();
+                        for (int i = 0; i < outputTable.col_names.size(); i++) {
+                            if (outputTable.col_names[i] == reqCol2) {
+                                index2 = i;
+                                break;
+                            }
+                        }
+
+                        tmpContent = outputTable.content;
+                        outputTable.content.clear();
+
+                        if (std::regex_match(mainOperator, Patterns::and_)) {
+                            for (auto const& row : tmpContent) {
+                                if (conditionCheck(outputTable.dataType, index1, logicOperator1, negated1, parameter1, row) and
+                                    conditionCheck(outputTable.dataType, index2, logicOperator2, negated2, parameter2, row)) {
+                                    outputTable.content.emplace_back(row);
+                                }
+                            }
+                        } else if (std::regex_match(mainOperator, Patterns::or_)) {
+                            for (auto const& row : tmpContent) {
+                                if (conditionCheck(outputTable.dataType, index1, logicOperator1, negated1, parameter1, row) or
+                                    conditionCheck(outputTable.dataType, index2, logicOperator2, negated2, parameter2, row)) {
+                                    outputTable.content.emplace_back(row);
+                                }
+                            }
+                        }
+
+                    } else {
+                        bool negated = false;
+                        if (std::regex_match(parameters["WHERE"][iterator], Patterns::not_)) {
+                            negated = true;
+                            iterator++;
+                        }
+
+                        auto reqCol = parameters["WHERE"][iterator++];
+                        auto logicOperator = parameters["WHERE"][iterator++];
+                        auto parameter = parameters["WHERE"][iterator++];
+
+                        if (!(logicOperator == "=" or logicOperator == "!=" or logicOperator == "<"
+                            or logicOperator == ">" or logicOperator == ">=" or logicOperator == "<=")) {
+                            std::cout << "Syntax Error: unknown operator " << logicOperator;
+                            exit(-1);
+                        }
+
+                        auto index = int();
+                        for (int i = 0; i < outputTable.col_names.size(); i++) {
+                            if (outputTable.col_names[i] == reqCol) {
+                                index = i;
+                                break;
+                            }
+                        }
+
+                        tmpContent = outputTable.content;
+                        outputTable.content.clear();
+
+                        for (auto const& row : tmpContent) {
+                            if (conditionCheck(outputTable.dataType, index, logicOperator, negated, parameter, row)) {
+                                outputTable.content.emplace_back(row);
+                            }
+                        }
+                    }
+                    outputTable.print();
+                }
             }
         } else if (ast[cmd_iterator] == "INSERT_INTO") {
             cmd_iterator++;
