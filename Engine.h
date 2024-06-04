@@ -6,9 +6,6 @@
 #define DATABASE_ENGINE_H
 
 
-#pragma once //TODO: check this
-
-
 //syntax check, ast and completion of the code
 class Engine {
 private:
@@ -310,11 +307,6 @@ public:
             Database::database.push_back(newTable);
         } else if (ast[cmd_iterator] == "SELECT") {
             cmd_iterator++;
-
-//            if (ast[cmd_iterator] == "INTO") {
-//                cmd_iterator++;
-//                std::cout << "not implemented";
-//            }
 
             if (ast[cmd_iterator] == "FROM") {
                 cmd_iterator++;

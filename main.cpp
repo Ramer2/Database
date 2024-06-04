@@ -197,10 +197,14 @@ int main() {
 //0 0 1 0 0
 //i s s s s
 //1 Oleksandr null Usyk 17.01.1987
-//2 Tyson null Fury 12.08.1988
+//2 Tyson null Fury 12.08.1988ss
 
-//TODO: implement conditions
+//TODO: implement foreign keys
 
-//TODO: encapsulation (private fields, getters, setters) classes: table, row, engine
+//TODO: ORDER BY
 
 //TODO: finish the commands
+
+//TODO: complete the main.cpp
+
+//TODO: encapsulation (private fields, getters, setters) classes: table, row, engine (optional)
