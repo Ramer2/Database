@@ -230,7 +230,15 @@ public:
                 ast.emplace_back("DROP_TABLE");
                 parameters["DROP_TABLE"].emplace_back(input[2]);
             } else {
-                std::cout << "Syntax Error: \"table\" keyword expected";
+                std::cout << "Syntax Error: \"TABLE\" keyword expected";
+                exit(-1);
+            }
+        } else if (std::regex_match(input[0], Patterns::truncate)) {
+            if (std::regex_match(input[1], Patterns::table)) {
+                ast.emplace_back("TRUNCATE_TABLE");
+                parameters["TRUNCATE_TABLE"].emplace_back(input[2]);
+            } else {
+                std::cout << "Syntax Error: \"TABLE\" keyword expected";
                 exit(-1);
             }
         } else {
@@ -760,7 +768,6 @@ public:
             }
 
         } else if (ast[cmd_iterator] == "DROP_TABLE") {
-
             auto iterator = Database::database.begin();
             while (iterator != Database::database.end()){
                 if ((*iterator).name == parameters["DROP_TABLE"][0]) {
@@ -771,6 +778,14 @@ public:
             }
             std::cout << "Syntax Error: table " << parameters["DROP_TABLE"][0] << " wasn't found";
             exit(-1);
+        } else if (ast[cmd_iterator] == "TRUNCATE_TABLE") {
+            auto table_name = parameters["TRUNCATE_TABLE"][0];
+            for (auto& table : Database::database) {
+                if (table.name == table_name) {
+                    table.content.clear();
+                    break;
+                }
+            }
         }
     }
 };
