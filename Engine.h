@@ -622,7 +622,6 @@ public:
                 }
             }
         } else if (ast[cmd_iterator] == "INSERT_INTO") {
-            cmd_iterator++;
 
             auto iterator = 0;
             std::string table_name = parameters["INSERT_INTO"][iterator++];
@@ -663,6 +662,13 @@ public:
                 }
             }
 
+            auto foreignKeyPos = std::vector<int>();
+            for (int i = 0; i < col_names.size(); i++) {
+                if (thisTable->fks[col_names[i]]) {
+                    foreignKeyPos.emplace_back(i);
+                }
+            }
+
             auto place = 0;
             auto row = std::vector<std::variant<int, float, std::string>>();
             for (auto const& el : parameters["VALUES"]) {
@@ -674,7 +680,6 @@ public:
                     row.clear();
                 } else {
                     auto thisColPlace = int();
-                    //doesnt work for some reason
                     for (int i = 0; i < thisTable->col_names.size(); i++) {
                         if (col_names[place] == thisTable->col_names[i]) {
                             thisColPlace = i;
@@ -683,8 +688,66 @@ public:
                     }
                     auto type = thisTable->dataType[thisColPlace];
 
-                    //I hope that I'm dealing with a responsible user who will not put something like "3.14afsdga" for a
-                    // float column (stof and stoi don't crash, the information is simply lost)
+                    //foreign values check
+                    for (auto const& pos : foreignKeyPos) {
+                        //checking, whether currently we are dealing with a reference column
+                        if (pos == place) {
+                            auto referenceTable = std::string();
+                            auto referenceColumn = std::string();
+                            auto reference = thisTable->references[col_names[place]];
+                            bool dot = false;
+                            for (char i : reference) {
+                                if (i == '.') {
+                                    dot = true;
+                                } else if (!dot) {
+                                    referenceTable += i;
+                                } else {
+                                    referenceColumn += i;
+                                }
+                            }
+                            Table* refTable;
+                            int reqColPos = 0;
+                            for (auto& table : Database::database) {
+                                if (table.name == referenceTable) {
+                                    refTable = &table;
+                                    break;
+                                }
+                            }
+                            for (int i = 0; i < refTable->col_names.size(); i++) {
+                                if (refTable->col_names[i] == referenceColumn) {
+                                    reqColPos = i;
+                                    break;
+                                }
+                            }
+
+                            bool found = false;
+                            for (auto const& rowCheck : refTable->content) {
+                                if (type == "i") {
+                                    auto val = std::stoi(el);
+                                    if (std::get<int>(rowCheck.attributes[reqColPos]) == val) {
+                                        found = true;
+                                    }
+                                } else if (type == "f") {
+                                    auto val = std::stof(el);
+                                    if (std::get<float>(rowCheck.attributes[reqColPos]) == val) {
+                                        found = true;
+                                    }
+                                } else {
+                                    auto val = el;
+                                    if (std::get<std::string>(rowCheck.attributes[reqColPos]) == val) {
+                                        found = true;
+                                    }
+                                }
+                            }
+                            if (!found) {
+                                std::cout << "Syntax error: this reference value does not exist.";
+                                exit(-1);
+                            }
+                        }
+                    }
+
+                    //I hope that I'm dealing with a responsible user who will not put something like "3.14afsdga" for a >
+                    // > float column (stof and stoi don't crash, the information is simply lost)
                     if (type == "i") {
                         row.emplace_back(std::stoi(el));
                     } else if (type == "f") {
@@ -695,8 +758,8 @@ public:
                     place++;
                 }
             }
+
         } else if (ast[cmd_iterator] == "DROP_TABLE") {
-            cmd_iterator++;
 
             auto iterator = Database::database.begin();
             while (iterator != Database::database.end()){

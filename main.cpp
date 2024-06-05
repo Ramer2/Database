@@ -218,26 +218,25 @@ int main() {
         auto command = std::vector<std::string>();
 //        std::getline(std::cin, query);
 //        query = "CREATE TABLE employees (id INTEGER PRIMARY KEY, first_name VARCHAR(50) not null,  mid_name VARCHAR(50) NULL, last_name VARCHAR(75) NOT NULL, dateofbirth DATE NOT NULL);";
-//        query = "INSERT INTO driver (idDriver, first_name, last_name, idCar) VALUES (1, John, Smith, 2), (2, Lara, Croft, 1);";
+        query = "INSERT INTO driver (idDriver, first_name, last_name, idCar) VALUES (3, John, Smith, 5);";
 //        query = "DROP TABLE employees;";
 //        query = "SELECT first_name, last_name, id, dateofbirth FROM employees WHERE first_name = 'OLEKSANDR' AND id > 2;";
 //        query = "CREATE TABLE driver ( idDriver integer primary key, first_name varchar(50) not null, last_name varchar(50) not null, idCar integer foreign key references car(idCar);";
 //        query = "CREATE TABLE car ( idCar integer primary key, model varchar(50) not null, yearOfProduction integer not null;";
-//        command = lexicalAnalysis(query);
+        command = lexicalAnalysis(query);
 
-//        Engine::codeRetrieval(command);
-//        Engine::completer();
+        Engine::codeRetrieval(command);
+        Engine::completer();
 
         for (auto& table : Database::database) {
             table.print();
         }
 
-        saver();
+//        saver();
         return 0;
     }
 }
 
-//TODO: for inputting/changing info in tables with references: check, whether the new reference exists
 //TODO: JOIN, ORDER BY, ALTER TABLE, TRUNCATE, UPDATE ... SET ... WHERE, DELETE ... FROM ... WHERE
 
 //TODO: finish the commands
