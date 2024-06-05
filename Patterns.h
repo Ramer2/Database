@@ -29,6 +29,8 @@ public:
     static const std::regex key;
     static const std::regex null;
     static const std::regex date;
+    static const std::regex foreign;
+    static const std::regex references;
 };
 
 #endif //DATABASE_PATTERNS_H

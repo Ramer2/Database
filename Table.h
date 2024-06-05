@@ -36,6 +36,10 @@ public:
 
     //a map for names of columns and whether a column is a PK
     std::map<std::string, bool> columns;
+    //a map for names of columns and whether a column is a FK
+    std::map<std::string, bool> fks;
+    //a map for references (name, table.name)
+    std::map<std::string, std::string> references;
     //key: columns, values: true (nullable column) or false (not nullable)
     std::map<std::string, bool> nullable;
 
@@ -50,22 +54,27 @@ public:
         this->name = name;
     }
 
-    Table(std::string const& name, std::vector<std::string> const& col_names, std::map<std::string, bool> const& columns,
-          std::map<std::string, bool> const& nullable, std::vector<std::string> const& dataType) {
+    Table(std::string const& name, std::vector<std::string> const& col_names, std::map<std::string, bool> const& columns, std::map<std::string, bool> const& fks,
+          std::map<std::string, bool> const& nullable, std::vector<std::string> const& dataType, std::map<std::string, std::string> const& references) {
         this->name = name;
         this->col_names = col_names;
         this->columns = columns;
+        this->fks = fks;
         this->nullable = nullable;
         this->dataType = dataType;
+        this->references = references;
     }
 
-    Table(std::string const& name, std::vector<std::string> const& col_names, std::map<std::string, bool> const& columns,
-          std::map<std::string, bool> const& nullable, std::vector<std::string> const& dataType, std::vector<Row> const& content) {
+    Table(std::string const& name, std::vector<std::string> const& col_names, std::map<std::string, bool> const& columns, std::map<std::string, bool> const& fks,
+          std::map<std::string, bool> const& nullable, std::vector<std::string> const& dataType, std::map<std::string, std::string> const& references,
+          std::vector<Row> const& content) {
         this->name = name;
         this->col_names = col_names;
         this->columns = columns;
+        this->fks = fks;
         this->nullable = nullable;
         this->dataType = dataType;
+        this->references = references;
         this->content = content;
     }
 
@@ -74,6 +83,16 @@ public:
         dataType.emplace_back(type);
         nullable[column_name] = null;
         col_names.push_back(column_name);
+        fks[column_name] = false;
+    }
+
+    auto addReferenceColumn (std::string const& column_name, std::string const& type, std::string const& refTableRow) {
+        columns[column_name] = false;
+        dataType.emplace_back(type);
+        nullable[column_name] = false;
+        col_names.push_back(column_name);
+        references[column_name] = refTableRow;
+        fks[column_name] = true;
     }
 
     auto addFullRow(std::vector<std::variant<int, float, std::string>> const& input) {//add one Row
@@ -106,6 +125,8 @@ public:
         for (auto const& col : col_names) {
             if (columns[col]) {
                 fmt::print("{:^15}│", (col + "*"));
+            } else if (fks[col]) {
+                fmt::print("{:^15}│", (col + "&"));
             } else {
                 fmt::print("{:^15}│", col);
             }

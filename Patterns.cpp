@@ -26,3 +26,5 @@ const std::regex Patterns::primary = std::regex("primary", std::regex_constants:
 const std::regex Patterns::key = std::regex("key", std::regex_constants::icase);
 const std::regex Patterns::null = std::regex("null", std::regex_constants::icase);
 const std::regex Patterns::date = std::regex("date", std::regex_constants::icase);
+const std::regex Patterns::foreign = std::regex("foreign", std::regex_constants::icase);
+const std::regex Patterns::references = std::regex("references", std::regex_constants::icase);

@@ -273,12 +273,58 @@ public:
 
                     bool null;
                     bool pk;
+                    bool fk = false;
+                    auto reference = std::string();
                     if (std::regex_match(parameters["CREATE_TABLE"][iterator], Patterns::primary)) {
                         iterator++;
                         if (std::regex_match(parameters["CREATE_TABLE"][iterator], Patterns::key)) {
                             iterator++;
                             pk = true;
                             null = false;
+                        } else {
+                            std::cout << "Syntax Error: \"KEY\" keyword is missing";
+                            exit(-1);
+                        }
+                    } else if (std::regex_match(parameters["CREATE_TABLE"][iterator], Patterns::foreign)) {
+                        iterator++;
+                        if (std::regex_match(parameters["CREATE_TABLE"][iterator], Patterns::key)) {
+                            iterator++;
+                            if (std::regex_match(parameters["CREATE_TABLE"][iterator], Patterns::references)) {
+                                iterator++;
+                                auto refTable = parameters["CREATE_TABLE"][iterator];
+                                auto refCol = parameters["CREATE_TABLE"][iterator + 2];
+                                reference = refTable + "." + refCol;
+                                iterator += 3;
+                                pk = false;
+                                fk = true;
+                                null = false; //limitation of this project: fk cannot be null
+
+                                bool foundTable = false;
+                                for (auto const& table : Database::database) {
+                                    if (table.name == refTable) {
+                                        foundTable = true;
+                                        bool found = false;
+                                        for (auto const& col : table.col_names) {
+                                            if (col == refCol) {
+                                                found = true;
+                                                break;
+                                            }
+                                        }
+                                        if (!found) {
+                                            std::cout << "Syntax Error: reference column wasn't found";
+                                            exit(-1);
+                                        }
+                                    }
+                                }
+                                if (!foundTable) {
+                                    std::cout << "Syntax Error: reference table wasn't found";
+                                    exit(-1);
+                                }
+
+                            } else {
+                                std::cout << "Syntax Error: \"REFERENCES\" keyword is expected";
+                                exit(-1);
+                            }
                         } else {
                             std::cout << "Syntax Error: \"KEY\" keyword is missing";
                             exit(-1);
@@ -301,7 +347,11 @@ public:
                         exit(-1);
                     }
 
-                    newTable.addColumn(column_name, type, null, pk);
+                    if (fk) {
+                        newTable.addReferenceColumn(column_name, type, reference);
+                    } else {
+                        newTable.addColumn(column_name, type, null, pk);
+                    }
                 } else iterator++;
             }
             Database::database.push_back(newTable);
