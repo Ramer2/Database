@@ -35,6 +35,8 @@ private:
                 std::regex_match(word, Patterns::or_) or
                 std::regex_match(word, Patterns::and_) or
                 std::regex_match(word, Patterns::not_) or
+                std::regex_match(word, Patterns::join) or
+                std::regex_match(word, Patterns::on) or
                 std::regex_match(word, Patterns::where));
     }
 
@@ -82,9 +84,10 @@ private:
         return parameterVector;
     }
 
+    //this method is used for conditions in such commands as WHERE and JOIN
+    //
     static auto conditionCheck (std::vector<std::string> const& dataType, int const& index, std::string const& logicOperator,
                                 bool const& negated, std::string const& parameter, Row const& row) {
-        std::cout << index << std::endl;
         if (dataType[index] == "i") {
             auto val1 = std::get<int>(row.attributes[index]);
             auto val2 = std::stoi(parameter);
@@ -95,14 +98,15 @@ private:
                     (logicOperator == ">" and val1 > val2) or
                     (logicOperator == "<" and val1 < val2) or
                     (logicOperator == ">=" and val1 >= val2) or
-                    (logicOperator == "<=" and val1 <= val2)) return true;
+                    (logicOperator == "<=" and val1 <= val2))
+                    return true;
             } else {
-                if (!((logicOperator == "=" and val1 == val2) or
-                      (logicOperator == "!=" and val1 != val2) or
-                      (logicOperator == ">" and val1 > val2) or
-                      (logicOperator == "<" and val1 < val2) or
-                      (logicOperator == ">=" and val1 >= val2) or
-                      (logicOperator == "<=" and val1 <= val2))) return true;
+                if (!((logicOperator == "=" and val1 != val2) or
+                      (logicOperator == "!=" and val1 == val2) or
+                      (logicOperator == ">" and val1 < val2) or
+                      (logicOperator == "<" and val1 > val2) or
+                      (logicOperator == ">=" and val1 <= val2) or
+                      (logicOperator == "<=" and val1 >= val2))) return true;
             }
         } else if (dataType[index] == "f") {
             auto val1 = std::get<float>(row.attributes[index]);
@@ -115,12 +119,12 @@ private:
                     (logicOperator == ">=" and val1 >= val2) or
                     (logicOperator == "<=" and val1 <= val2)) return true;
             } else {
-                if (!((logicOperator == "=" and val1 == val2) or
-                      (logicOperator == "!=" and val1 != val2) or
-                      (logicOperator == ">" and val1 > val2) or
-                      (logicOperator == "<" and val1 < val2) or
-                      (logicOperator == ">=" and val1 >= val2) or
-                      (logicOperator == "<=" and val1 <= val2))) return true;
+                if (!((logicOperator == "=" and val1 != val2) or
+                      (logicOperator == "!=" and val1 == val2) or
+                      (logicOperator == ">" and val1 < val2) or
+                      (logicOperator == "<" and val1 > val2) or
+                      (logicOperator == ">=" and val1 <= val2) or
+                      (logicOperator == "<=" and val1 >= val2))) return true;
             }
         } else {
             auto val1 = std::get<std::string>(row.attributes[index]);
@@ -135,12 +139,12 @@ private:
                     (logicOperator == ">=" and val1 >= val2) or
                     (logicOperator == "<=" and val1 <= val2)) return true;
             } else {
-                if (!((logicOperator == "=" and val1 == val2) or
-                      (logicOperator == "!=" and val1 != val2) or
-                      (logicOperator == ">" and val1 > val2) or
-                      (logicOperator == "<" and val1 < val2) or
-                      (logicOperator == ">=" and val1 >= val2) or
-                      (logicOperator == "<=" and val1 <= val2))) return true;
+                if (!((logicOperator == "=" and val1 != val2) or
+                      (logicOperator == "!=" and val1 == val2) or
+                      (logicOperator == ">" and val1 < val2) or
+                      (logicOperator == "<" and val1 > val2) or
+                      (logicOperator == ">=" and val1 <= val2) or
+                      (logicOperator == "<=" and val1 >= val2))) return true;
             }
         }
         return false;
@@ -165,6 +169,21 @@ public:
                 iterator++;
                 ast.emplace_back("FROM");
                 parameters["FROM"] = parameterExtraction(input, iterator);
+
+                if (iterator == input.size()) return;
+
+                //join
+                if (std::regex_match(input[iterator], Patterns::join)) {
+                    iterator++;
+                    ast.emplace_back("JOIN");
+                    parameters["JOIN"].emplace_back(input[iterator]);
+                    iterator++;
+
+                    if (std::regex_match(input[iterator], Patterns::on)) {
+                        iterator++;
+                        parameters["ON"] = specialParameterExtraction(input, iterator);
+                    }
+                }
 
                 if (iterator == input.size()) return;
 
@@ -376,6 +395,8 @@ public:
                 auto tmpNullable = std::map<std::string, bool>();
                 auto tmpDataType = std::vector<std::string>();
                 auto tmpContent = std::vector<Row>();
+                auto tmpReferences = std::map<std::string, std::string>();
+                auto tmpFks = std::map<std::string, bool>();
 
                 auto reqTables = std::vector<Table>();
                 for (auto const& name : parameters["FROM"]) {
@@ -394,13 +415,15 @@ public:
 
                 if (parameters["SELECT"][0] == "*") {
                     if (reqTables.size() == 1) {
-                        reqTables[0].print();
+                        outputTable = reqTables[0];
                     } else {
                         for (auto const& table : reqTables) {
                             tmpCol_Names.insert(tmpCol_Names.end(),table.col_names.begin(), table.col_names.end());
                             tmpColumns.insert(table.columns.begin(), table.columns.end());
                             tmpNullable.insert(table.nullable.begin(), table.nullable.end());
                             tmpDataType.insert(tmpDataType.end(), table.dataType.begin(), table.dataType.end());
+                            tmpFks.insert(table.fks.begin(), table.fks.end());
+                            tmpReferences.insert(table.references.begin(), table.references.end());
 
                             //content combination
                             if (tmpContent.empty()) {
@@ -422,6 +445,8 @@ public:
                         outputTable.nullable = tmpNullable;
                         outputTable.dataType = tmpDataType;
                         outputTable.content = tmpContent;
+                        outputTable.fks = tmpFks;
+                        outputTable.references = tmpReferences;
                     }
                 } else {
                     //check for column availability among tables
@@ -454,6 +479,22 @@ public:
                             for (auto const& col : table.nullable) {
                                 if (col.first == tmpCol) {
                                     tmpNullable[tmpCol] = col.second;
+                                }
+                            }
+                        }
+
+                        for (auto const& tmpCol : tmpCol_Names) {
+                            for (auto const& col : table.fks) {
+                                if (col.first == tmpCol) {
+                                    tmpFks[tmpCol] = col.second;
+                                }
+                            }
+                        }
+
+                        for (auto const& tmpCol : tmpCol_Names) {
+                            for (auto const& col : table.references) {
+                                if (col.first == tmpCol) {
+                                    tmpReferences[tmpCol] = col.second;
                                 }
                             }
                         }
@@ -508,15 +549,185 @@ public:
                     outputTable.nullable = tmpNullable;
                     outputTable.dataType = tmpDataType;
                     outputTable.content = tmpContent;
+                    outputTable.fks = tmpFks;
+                    outputTable.references = tmpReferences;
                 }
 
                 if (cmd_iterator == ast.size()) {
                     outputTable.print();
                     return;
                 } else {
-                    if (!std::regex_match(ast[cmd_iterator], Patterns::where)) {
+                    if (!(std::regex_match(ast[cmd_iterator], Patterns::where) or std::regex_match(ast[cmd_iterator], Patterns::join))) {
                         std::cout << "Syntax Error: unknown keyword" << ast[cmd_iterator];
                         exit(-1);
+                    }
+
+                    if (std::regex_match(ast[cmd_iterator], Patterns::join)) {
+                        cmd_iterator++;
+
+                        auto nameOfJoinTable = parameters["JOIN"][0];
+                        Table* joinTable;
+                        bool found = false;
+                        for (auto& table : Database::database) {
+                            if (table.name == nameOfJoinTable) {
+                                joinTable = &table;
+                                found = true;
+                            }
+                        }
+                        if (!found) {
+                            std::cout << "Syntax Error: joining table was not found";
+                            exit(-1);
+                        }
+
+                        outputTable.col_names.insert(outputTable.col_names.end(), joinTable->col_names.begin(), joinTable->col_names.end());
+                        outputTable.columns.insert(joinTable->columns.begin(), joinTable->columns.end());
+                        outputTable.fks.insert(joinTable->fks.begin(), joinTable->fks.end());
+                        outputTable.references.insert(joinTable->references.begin(), joinTable->references.end());
+                        outputTable.nullable.insert(joinTable->nullable.begin(), joinTable->nullable.end());
+                        outputTable.dataType.insert(outputTable.dataType.end(), joinTable->dataType.begin(), joinTable->dataType.end());
+
+                        auto indexVector = std::vector<int>();
+                        for (auto const& tmpCol : joinTable->col_names) {
+                            for (int i = 0; i < joinTable->col_names.size(); i++) {
+                                if (joinTable->col_names[i] == tmpCol) indexVector.emplace_back(i);
+                            }
+                        }
+
+                        //solution, provided by ChatGPT on "c++: how to get rid of duplicates in the vector of ints"
+                        //omg, this fix worked. I thought I'll have to rewrite this whole loop
+                        auto last = std::unique(indexVector.begin(), indexVector.end());
+                        indexVector.erase(last, indexVector.end());
+
+                        auto temporary = outputTable.content;
+                        outputTable.content.clear();
+
+                        if (temporary.empty()) {
+                            for (auto const& row : joinTable->content) {
+                                auto tmpAttributes = std::vector<std::variant<int, float, std::string>>();
+                                for (auto index : indexVector) {
+                                    tmpAttributes.emplace_back(row.attributes[index]);
+                                }
+                                temporary.emplace_back(tmpAttributes);
+                            }
+                        } else {
+                            auto prevContent = temporary;
+                            temporary.clear();
+                            for (auto const& prevRow : prevContent) {
+                                for (auto const& row : joinTable->content) {
+                                    auto prevRowAttributes = prevRow.attributes;
+                                    auto tmpAttributes = std::vector<std::variant<int, float, std::string>>();
+                                    for (auto index : indexVector) {
+                                        prevRowAttributes.emplace_back(row.attributes[index]);
+                                    }
+                                    temporary.emplace_back(prevRowAttributes);
+                                }
+                            }
+                        }
+                        outputTable.content = temporary;
+
+                        auto iterator = 0;
+                        auto negated = false;
+                        if (std::regex_match(parameters["ON"][iterator], Patterns::not_)) {
+                            negated = true;
+                            iterator++;
+                        }
+
+                        auto leftRef = parameters["ON"][iterator++];
+                        auto leftCol = std::string();
+                        auto leftTableName = std::string();
+                        auto logicOperator = parameters["ON"][iterator++];
+                        auto rightRef = parameters["ON"][iterator++];
+                        auto rightCol = std::string();
+                        auto rightTableName = std::string();
+
+                        bool dot = false;
+                        for (auto ch : leftRef) {
+                            if (ch == '.') {
+                                dot = true;
+                            } else if (dot) {
+                                leftCol += ch;
+                            } else {
+                                leftTableName += ch;
+                            }
+                        }
+                        dot = false;
+                        for (auto ch : rightRef) {
+                            if (ch == '.') {
+                                dot = true;
+                            } else if (dot) {
+                                rightCol += ch;
+                            } else {
+                                rightTableName += ch;
+                            }
+                        }
+
+                        Table* leftTable;
+                        Table* rightTable;
+                        bool leftFound = false;
+                        bool rightFound = false;
+                        for (auto& table : Database::database) {
+                            if (table.name == leftTableName) {
+                                leftTable = &table;
+                                leftFound = true;
+                            } else if (table.name == rightTableName) {
+                                rightTable = &table;
+                                rightFound = true;
+                            }
+                        }
+                        if (!leftFound or !rightFound) {
+                            std::cout << "Syntax Error: joining table was not found";
+                            exit(-1);
+                        }
+
+                        if (!(logicOperator == "=" or logicOperator == "!=" or logicOperator == "<"
+                              or logicOperator == ">" or logicOperator == ">=" or logicOperator == "<=")) {
+                            std::cout << "Syntax Error: unknown operator " << logicOperator;
+                            exit(-1);
+                        }
+
+                        //index signifies the position of requested column in the output table
+                        auto leftIndex = int();
+                        for (int i = 0; i < outputTable.col_names.size(); i++) {
+                            if (outputTable.col_names[i] == leftCol) {
+                                leftIndex = i;
+                                break;
+                            }
+                        }
+
+                        auto rightIndex = int();
+                        for (int i = 0; i < joinTable->col_names.size(); i++) {
+                            if (joinTable->col_names[i] == rightCol) {
+                                rightIndex = i;
+                                break;
+                            }
+                        }
+
+                        if (leftTable->dataType[leftIndex] != rightTable->dataType[rightIndex]) {
+                            std::cout << "Syntax Error: check columns are of different data types";
+                            exit(-1);
+                        }
+
+                        tmpContent = outputTable.content;
+                        outputTable.content.clear();
+
+                        for (auto const& row : tmpContent) {
+                            auto parameter = std::string();
+                            if (joinTable->dataType[rightIndex] == "i") {
+                                parameter = std::to_string(std::get<int>(row.attributes[leftTable->col_names.size() + rightIndex]));
+                            } else if (joinTable->dataType[rightIndex] == "f") {
+                                parameter = std::to_string(std::get<float>(row.attributes[leftTable->col_names.size() + rightIndex]));
+                            } else {
+                                parameter = std::get<std::string>(row.attributes[leftTable->col_names.size() + rightIndex]);
+                            }
+                            if (conditionCheck(outputTable.dataType, leftIndex, logicOperator, negated, parameter, row)) {
+                                outputTable.content.emplace_back(row);
+                            }
+                        }
+                    }
+
+                    if (cmd_iterator == ast.size()) {
+                        outputTable.print();
+                        return;
                     }
 
                     auto iterator = 0;
@@ -593,6 +804,7 @@ public:
                         }
 
                     } else {
+                        //WHERE negated reqCol logicOperator parameter
                         bool negated = false;
                         if (std::regex_match(parameters["WHERE"][iterator], Patterns::not_)) {
                             negated = true;
@@ -609,6 +821,7 @@ public:
                             exit(-1);
                         }
 
+                        //index signifies the position of requested column in the output table
                         auto index = int();
                         for (int i = 0; i < outputTable.col_names.size(); i++) {
                             if (outputTable.col_names[i] == reqCol) {

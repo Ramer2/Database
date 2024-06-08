@@ -31,6 +31,8 @@ public:
     static const std::regex date;
     static const std::regex foreign;
     static const std::regex references;
+    static const std::regex join;
+    static const std::regex on;
 };
 
 #endif //DATABASE_PATTERNS_H

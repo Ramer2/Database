@@ -224,21 +224,23 @@ int main() {
 //        query = "CREATE TABLE driver ( idDriver integer primary key, first_name varchar(50) not null, last_name varchar(50) not null, idCar integer foreign key references car(idCar);";
 //        query = "CREATE TABLE car ( idCar integer primary key, model varchar(50) not null, yearOfProduction integer not null;";
 //        query = "TRUNCATE TABLE driver";
+        query = "SELECT * FROM driver JOIN car ON driver.idCar = car.idCar WHERE idDriver = 1;";
         command = lexicalAnalysis(query);
 
         Engine::codeRetrieval(command);
         Engine::completer();
 
-        for (auto& table : Database::database) {
-            table.print();
-        }
+//        for (auto& table : Database::database) {
+//            fmt::println("{}", table.name);
+//            table.print();
+//        }
 
         saver();
         return 0;
     }
 }
-
-//TODO: JOIN, ORDER BY, ALTER TABLE, UPDATE ... SET ... WHERE, DELETE ... FROM ... WHERE
+//TODO: in JOIN implement the check whether the checking column is an fk column
+//TODO: ORDER BY, ALTER TABLE, UPDATE ... SET ... WHERE, DELETE ... FROM ... WHERE
 
 //TODO: finish the commands
 
