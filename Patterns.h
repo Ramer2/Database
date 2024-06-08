@@ -33,6 +33,10 @@ public:
     static const std::regex references;
     static const std::regex join;
     static const std::regex on;
+    static const std::regex order;
+    static const std::regex by;
+    static const std::regex asc;
+    static const std::regex desc;
 };
 
 #endif //DATABASE_PATTERNS_H

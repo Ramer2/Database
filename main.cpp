@@ -224,7 +224,7 @@ int main() {
 //        query = "CREATE TABLE driver ( idDriver integer primary key, first_name varchar(50) not null, last_name varchar(50) not null, idCar integer foreign key references car(idCar);";
 //        query = "CREATE TABLE car ( idCar integer primary key, model varchar(50) not null, yearOfProduction integer not null;";
 //        query = "TRUNCATE TABLE driver";
-        query = "SELECT * FROM driver JOIN car ON driver.idCar = car.idCar WHERE idDriver = 1;";
+        query = "SELECT * FROM driver JOIN car ON driver.idCar = car.idCar ORDER BY idDriver DESC;";
         command = lexicalAnalysis(query);
 
         Engine::codeRetrieval(command);
@@ -239,8 +239,7 @@ int main() {
         return 0;
     }
 }
-
-//TODO: ORDER BY, ALTER TABLE, UPDATE ... SET ... WHERE, DELETE ... FROM ... WHERE
+//TODO: ALTER TABLE, UPDATE ... SET ... WHERE, DELETE ... FROM ... WHERE
 
 //TODO: finish the commands
 

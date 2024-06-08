@@ -37,6 +37,8 @@ private:
                 std::regex_match(word, Patterns::not_) or
                 std::regex_match(word, Patterns::join) or
                 std::regex_match(word, Patterns::on) or
+                std::regex_match(word, Patterns::order) or
+                std::regex_match(word, Patterns::by) or
                 std::regex_match(word, Patterns::where));
     }
 
@@ -101,12 +103,12 @@ private:
                     (logicOperator == "<=" and val1 <= val2))
                     return true;
             } else {
-                if (!((logicOperator == "=" and val1 != val2) or
-                      (logicOperator == "!=" and val1 == val2) or
-                      (logicOperator == ">" and val1 < val2) or
-                      (logicOperator == "<" and val1 > val2) or
-                      (logicOperator == ">=" and val1 <= val2) or
-                      (logicOperator == "<=" and val1 >= val2))) return true;
+                if (!((logicOperator == "=" and val1 == val2) or
+                      (logicOperator == "!=" and val1 != val2) or
+                      (logicOperator == ">" and val1 > val2) or
+                      (logicOperator == "<" and val1 < val2) or
+                      (logicOperator == ">=" and val1 >= val2) or
+                      (logicOperator == "<=" and val1 <= val2))) return true;
             }
         } else if (dataType[index] == "f") {
             auto val1 = std::get<float>(row.attributes[index]);
@@ -119,12 +121,12 @@ private:
                     (logicOperator == ">=" and val1 >= val2) or
                     (logicOperator == "<=" and val1 <= val2)) return true;
             } else {
-                if (!((logicOperator == "=" and val1 != val2) or
-                      (logicOperator == "!=" and val1 == val2) or
-                      (logicOperator == ">" and val1 < val2) or
-                      (logicOperator == "<" and val1 > val2) or
-                      (logicOperator == ">=" and val1 <= val2) or
-                      (logicOperator == "<=" and val1 >= val2))) return true;
+                if (!((logicOperator == "=" and val1 == val2) or
+                      (logicOperator == "!=" and val1 != val2) or
+                      (logicOperator == ">" and val1 > val2) or
+                      (logicOperator == "<" and val1 < val2) or
+                      (logicOperator == ">=" and val1 >= val2) or
+                      (logicOperator == "<=" and val1 <= val2))) return true;
             }
         } else {
             auto val1 = std::get<std::string>(row.attributes[index]);
@@ -139,12 +141,12 @@ private:
                     (logicOperator == ">=" and val1 >= val2) or
                     (logicOperator == "<=" and val1 <= val2)) return true;
             } else {
-                if (!((logicOperator == "=" and val1 != val2) or
-                      (logicOperator == "!=" and val1 == val2) or
-                      (logicOperator == ">" and val1 < val2) or
-                      (logicOperator == "<" and val1 > val2) or
-                      (logicOperator == ">=" and val1 <= val2) or
-                      (logicOperator == "<=" and val1 >= val2))) return true;
+                if (!((logicOperator == "=" and val1 == val2) or
+                      (logicOperator == "!=" and val1 != val2) or
+                      (logicOperator == ">" and val1 > val2) or
+                      (logicOperator == "<" and val1 < val2) or
+                      (logicOperator == ">=" and val1 >= val2) or
+                      (logicOperator == "<=" and val1 <= val2))) return true;
             }
         }
         return false;
@@ -182,6 +184,9 @@ public:
                     if (std::regex_match(input[iterator], Patterns::on)) {
                         iterator++;
                         parameters["ON"] = specialParameterExtraction(input, iterator);
+                    } else {
+                        std::cout << "Syntax Error: \"ON\" expected";
+                        exit(-1);
                     }
                 }
 
@@ -193,6 +198,19 @@ public:
                     ast.emplace_back("WHERE");
                     parameters["WHERE"] = specialParameterExtraction(input, iterator);
                 }
+
+                if (std::regex_match(input[iterator], Patterns::order)) {
+                    iterator++;
+                    if (std::regex_match(input[iterator], Patterns::by)) {
+                        iterator++;
+                        ast.emplace_back("ORDER_BY");
+                        parameters["ORDER_BY"] = parameterExtraction(input, iterator);
+                    } else {
+                        std::cout << "Syntax Error: \"BY\" expected";
+                        exit(-1);
+                    }
+                }
+
             } else {
                 std::cout << R"(Syntax Error: "FROM" or "INTO" expected)";
                 exit(-1);
@@ -267,6 +285,7 @@ public:
     }
 
     static auto completer() {
+
         auto cmd_iterator = 0;
         if (ast[cmd_iterator] == "CREATE_TABLE") {
 
@@ -556,189 +575,182 @@ public:
                 if (cmd_iterator == ast.size()) {
                     outputTable.print();
                     return;
-                } else {
-                    if (!(std::regex_match(ast[cmd_iterator], Patterns::where) or std::regex_match(ast[cmd_iterator], Patterns::join))) {
-                        std::cout << "Syntax Error: unknown keyword" << ast[cmd_iterator];
+                }
+
+                if (std::regex_match(ast[cmd_iterator], Patterns::join)) {
+                    cmd_iterator++;
+
+                    auto nameOfJoinTable = parameters["JOIN"][0];
+                    Table* joinTable;
+                    bool found = false;
+                    for (auto& table : Database::database) {
+                        if (table.name == nameOfJoinTable) {
+                            joinTable = &table;
+                            found = true;
+                        }
+                    }
+                    if (!found) {
+                        std::cout << "Syntax Error: joining table was not found";
                         exit(-1);
                     }
 
-                    if (std::regex_match(ast[cmd_iterator], Patterns::join)) {
-                        cmd_iterator++;
+                    outputTable.col_names.insert(outputTable.col_names.end(), joinTable->col_names.begin(), joinTable->col_names.end());
+                    outputTable.columns.insert(joinTable->columns.begin(), joinTable->columns.end());
+                    outputTable.fks.insert(joinTable->fks.begin(), joinTable->fks.end());
+                    outputTable.references.insert(joinTable->references.begin(), joinTable->references.end());
+                    outputTable.nullable.insert(joinTable->nullable.begin(), joinTable->nullable.end());
+                    outputTable.dataType.insert(outputTable.dataType.end(), joinTable->dataType.begin(), joinTable->dataType.end());
 
-                        auto nameOfJoinTable = parameters["JOIN"][0];
-                        Table* joinTable;
-                        bool found = false;
-                        for (auto& table : Database::database) {
-                            if (table.name == nameOfJoinTable) {
-                                joinTable = &table;
-                                found = true;
+                    auto indexVector = std::vector<int>();
+                    for (auto const& tmpCol : joinTable->col_names) {
+                        for (int i = 0; i < joinTable->col_names.size(); i++) {
+                            if (joinTable->col_names[i] == tmpCol) indexVector.emplace_back(i);
+                        }
+                    }
+
+                    //solution, provided by ChatGPT on "c++: how to get rid of duplicates in the vector of ints"
+                    //omg, this fix worked. I thought I'll have to rewrite this whole loop
+                    auto last = std::unique(indexVector.begin(), indexVector.end());
+                    indexVector.erase(last, indexVector.end());
+
+                    auto temporary = outputTable.content;
+                    outputTable.content.clear();
+
+                    if (temporary.empty()) {
+                        for (auto const& row : joinTable->content) {
+                            auto tmpAttributes = std::vector<std::variant<int, float, std::string>>();
+                            for (auto index : indexVector) {
+                                tmpAttributes.emplace_back(row.attributes[index]);
                             }
+                            temporary.emplace_back(tmpAttributes);
                         }
-                        if (!found) {
-                            std::cout << "Syntax Error: joining table was not found";
-                            exit(-1);
-                        }
-
-                        outputTable.col_names.insert(outputTable.col_names.end(), joinTable->col_names.begin(), joinTable->col_names.end());
-                        outputTable.columns.insert(joinTable->columns.begin(), joinTable->columns.end());
-                        outputTable.fks.insert(joinTable->fks.begin(), joinTable->fks.end());
-                        outputTable.references.insert(joinTable->references.begin(), joinTable->references.end());
-                        outputTable.nullable.insert(joinTable->nullable.begin(), joinTable->nullable.end());
-                        outputTable.dataType.insert(outputTable.dataType.end(), joinTable->dataType.begin(), joinTable->dataType.end());
-
-                        auto indexVector = std::vector<int>();
-                        for (auto const& tmpCol : joinTable->col_names) {
-                            for (int i = 0; i < joinTable->col_names.size(); i++) {
-                                if (joinTable->col_names[i] == tmpCol) indexVector.emplace_back(i);
-                            }
-                        }
-
-                        //solution, provided by ChatGPT on "c++: how to get rid of duplicates in the vector of ints"
-                        //omg, this fix worked. I thought I'll have to rewrite this whole loop
-                        auto last = std::unique(indexVector.begin(), indexVector.end());
-                        indexVector.erase(last, indexVector.end());
-
-                        auto temporary = outputTable.content;
-                        outputTable.content.clear();
-
-                        if (temporary.empty()) {
+                    } else {
+                        auto prevContent = temporary;
+                        temporary.clear();
+                        for (auto const& prevRow : prevContent) {
                             for (auto const& row : joinTable->content) {
+                                auto prevRowAttributes = prevRow.attributes;
                                 auto tmpAttributes = std::vector<std::variant<int, float, std::string>>();
                                 for (auto index : indexVector) {
-                                    tmpAttributes.emplace_back(row.attributes[index]);
+                                    prevRowAttributes.emplace_back(row.attributes[index]);
                                 }
-                                temporary.emplace_back(tmpAttributes);
-                            }
-                        } else {
-                            auto prevContent = temporary;
-                            temporary.clear();
-                            for (auto const& prevRow : prevContent) {
-                                for (auto const& row : joinTable->content) {
-                                    auto prevRowAttributes = prevRow.attributes;
-                                    auto tmpAttributes = std::vector<std::variant<int, float, std::string>>();
-                                    for (auto index : indexVector) {
-                                        prevRowAttributes.emplace_back(row.attributes[index]);
-                                    }
-                                    temporary.emplace_back(prevRowAttributes);
-                                }
-                            }
-                        }
-                        outputTable.content = temporary;
-
-                        auto iterator = 0;
-                        auto negated = false;
-                        if (std::regex_match(parameters["ON"][iterator], Patterns::not_)) {
-                            negated = true;
-                            iterator++;
-                        }
-
-                        auto leftRef = parameters["ON"][iterator++];
-                        auto leftCol = std::string();
-                        auto leftTableName = std::string();
-                        auto logicOperator = parameters["ON"][iterator++];
-                        auto rightRef = parameters["ON"][iterator++];
-                        auto rightCol = std::string();
-                        auto rightTableName = std::string();
-
-                        bool dot = false;
-                        for (auto ch : leftRef) {
-                            if (ch == '.') {
-                                dot = true;
-                            } else if (dot) {
-                                leftCol += ch;
-                            } else {
-                                leftTableName += ch;
-                            }
-                        }
-                        dot = false;
-                        for (auto ch : rightRef) {
-                            if (ch == '.') {
-                                dot = true;
-                            } else if (dot) {
-                                rightCol += ch;
-                            } else {
-                                rightTableName += ch;
-                            }
-                        }
-
-                        if (!(outputTable.fks[leftCol] && joinTable->columns[rightCol])) {
-                            std::cout << "Syntax Error: the checking columns are not keys";
-                            exit(-1);
-                        }
-
-                        Table* leftTable;
-                        Table* rightTable;
-                        bool leftFound = false;
-                        bool rightFound = false;
-                        for (auto& table : Database::database) {
-                            if (table.name == leftTableName) {
-                                leftTable = &table;
-                                leftFound = true;
-                            } else if (table.name == rightTableName) {
-                                rightTable = &table;
-                                rightFound = true;
-                            }
-                        }
-                        if (!leftFound or !rightFound) {
-                            std::cout << "Syntax Error: joining table was not found";
-                            exit(-1);
-                        }
-
-                        if (!(logicOperator == "=" or logicOperator == "!=" or logicOperator == "<"
-                              or logicOperator == ">" or logicOperator == ">=" or logicOperator == "<=")) {
-                            std::cout << "Syntax Error: unknown operator " << logicOperator;
-                            exit(-1);
-                        }
-
-                        //index signifies the position of requested column in the output table
-                        auto leftIndex = int();
-                        for (int i = 0; i < outputTable.col_names.size(); i++) {
-                            if (outputTable.col_names[i] == leftCol) {
-                                leftIndex = i;
-                                break;
-                            }
-                        }
-
-                        auto rightIndex = int();
-                        for (int i = 0; i < joinTable->col_names.size(); i++) {
-                            if (joinTable->col_names[i] == rightCol) {
-                                rightIndex = i;
-                                break;
-                            }
-                        }
-
-                        if (leftTable->dataType[leftIndex] != rightTable->dataType[rightIndex]) {
-                            std::cout << "Syntax Error: check columns are of different data types";
-                            exit(-1);
-                        }
-
-                        tmpContent = outputTable.content;
-                        outputTable.content.clear();
-
-                        for (auto const& row : tmpContent) {
-                            auto parameter = std::string();
-                            if (joinTable->dataType[rightIndex] == "i") {
-                                parameter = std::to_string(std::get<int>(row.attributes[leftTable->col_names.size() + rightIndex]));
-                            } else if (joinTable->dataType[rightIndex] == "f") {
-                                parameter = std::to_string(std::get<float>(row.attributes[leftTable->col_names.size() + rightIndex]));
-                            } else {
-                                parameter = std::get<std::string>(row.attributes[leftTable->col_names.size() + rightIndex]);
-                            }
-                            if (conditionCheck(outputTable.dataType, leftIndex, logicOperator, negated, parameter, row)) {
-                                outputTable.content.emplace_back(row);
+                                temporary.emplace_back(prevRowAttributes);
                             }
                         }
                     }
-
-                    if (cmd_iterator == ast.size()) {
-                        outputTable.print();
-                        return;
-                    }
+                    outputTable.content = temporary;
 
                     auto iterator = 0;
-                    if (parameters["WHERE"].size() > 4) {
-                        auto mainOperator = std::string();
+                    auto negated = false;
+                    if (std::regex_match(parameters["ON"][iterator], Patterns::not_)) {
+                        negated = true;
+                        iterator++;
+                    }
 
+                    auto leftRef = parameters["ON"][iterator++];
+                    auto leftCol = std::string();
+                    auto leftTableName = std::string();
+                    auto logicOperator = parameters["ON"][iterator++];
+                    auto rightRef = parameters["ON"][iterator++];
+                    auto rightCol = std::string();
+                    auto rightTableName = std::string();
+
+                    bool dot = false;
+                    for (auto ch : leftRef) {
+                        if (ch == '.') {
+                            dot = true;
+                        } else if (dot) {
+                            leftCol += ch;
+                        } else {
+                            leftTableName += ch;
+                        }
+                    }
+                    dot = false;
+                    for (auto ch : rightRef) {
+                        if (ch == '.') {
+                            dot = true;
+                        } else if (dot) {
+                            rightCol += ch;
+                        } else {
+                            rightTableName += ch;
+                        }
+                    }
+
+                    if (!(outputTable.fks[leftCol] && joinTable->columns[rightCol])) {
+                        std::cout << "Syntax Error: the checking columns are not keys";
+                        exit(-1);
+                    }
+
+                    Table* leftTable;
+                    Table* rightTable;
+                    bool leftFound = false;
+                    bool rightFound = false;
+                    for (auto& table : Database::database) {
+                        if (table.name == leftTableName) {
+                            leftTable = &table;
+                            leftFound = true;
+                        } else if (table.name == rightTableName) {
+                            rightTable = &table;
+                            rightFound = true;
+                        }
+                    }
+                    if (!leftFound or !rightFound) {
+                        std::cout << "Syntax Error: joining table was not found";
+                        exit(-1);
+                    }
+
+                    if (!(logicOperator == "=" or logicOperator == "!=" or logicOperator == "<"
+                          or logicOperator == ">" or logicOperator == ">=" or logicOperator == "<=")) {
+                        std::cout << "Syntax Error: unknown operator " << logicOperator;
+                        exit(-1);
+                    }
+
+                    //index signifies the position of requested column in the output table
+                    auto leftIndex = int();
+                    for (int i = 0; i < outputTable.col_names.size(); i++) {
+                        if (outputTable.col_names[i] == leftCol) {
+                            leftIndex = i;
+                            break;
+                        }
+                    }
+
+                    auto rightIndex = int();
+                    for (int i = 0; i < joinTable->col_names.size(); i++) {
+                        if (joinTable->col_names[i] == rightCol) {
+                            rightIndex = i;
+                            break;
+                        }
+                    }
+
+                    if (leftTable->dataType[leftIndex] != rightTable->dataType[rightIndex]) {
+                        std::cout << "Syntax Error: check columns are of different data types";
+                        exit(-1);
+                    }
+
+                    tmpContent = outputTable.content;
+                    outputTable.content.clear();
+
+                    for (auto const& row : tmpContent) {
+                        auto parameter = std::string();
+                        if (joinTable->dataType[rightIndex] == "i") {
+                            parameter = std::to_string(std::get<int>(row.attributes[leftTable->col_names.size() + rightIndex]));
+                        } else if (joinTable->dataType[rightIndex] == "f") {
+                            parameter = std::to_string(std::get<float>(row.attributes[leftTable->col_names.size() + rightIndex]));
+                        } else {
+                            parameter = std::get<std::string>(row.attributes[leftTable->col_names.size() + rightIndex]);
+                        }
+                        if (conditionCheck(outputTable.dataType, leftIndex, logicOperator, negated, parameter, row)) {
+                            outputTable.content.emplace_back(row);
+                        }
+                    }
+                }
+
+                if (std::regex_match(ast[cmd_iterator], Patterns::where)) {
+                    cmd_iterator++;
+                    auto iterator = 0;
+                    if (parameters["WHERE"].size() > 4) {
+                        cmd_iterator++;
+                        auto mainOperator = std::string();
                         bool negated1 = false;
                         if (std::regex_match(parameters["WHERE"][iterator], Patterns::not_)) {
                             negated1 = true;
@@ -821,7 +833,7 @@ public:
                         auto parameter = parameters["WHERE"][iterator++];
 
                         if (!(logicOperator == "=" or logicOperator == "!=" or logicOperator == "<"
-                            or logicOperator == ">" or logicOperator == ">=" or logicOperator == "<=")) {
+                              or logicOperator == ">" or logicOperator == ">=" or logicOperator == "<=")) {
                             std::cout << "Syntax Error: unknown operator " << logicOperator;
                             exit(-1);
                         }
@@ -844,7 +856,99 @@ public:
                             }
                         }
                     }
+                }
+
+                if (cmd_iterator == ast.size()) {
                     outputTable.print();
+                    return;
+                }
+
+                if (ast[cmd_iterator] == "ORDER_BY") {
+                    cmd_iterator++;
+                    auto col = parameters["ORDER_BY"][0];
+                    auto order = parameters["ORDER_BY"][1];
+                    auto index = int();
+
+                    bool found = false;
+                    for (int i = 0; i < outputTable.col_names.size(); i++) {
+                        if (outputTable.col_names[i] == col) {
+                            index = i;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        std::cout << "Syntax Error: sort column was not found";
+                        exit(-1);
+                    }
+
+                    //Suggestion from ChatGPT
+                    std::function<bool(Row const&,Row const&)> comparator;
+
+                    if (outputTable.dataType[index] == "i") {
+                        if (std::regex_match(order, Patterns::asc)) {
+                            comparator =
+                                    [index](Row const& row1, Row const& row2) {
+                                        return std::get<int>(row1.attributes[index]) < std::get<int>(row2.attributes[index]);
+                                    };
+                        } else if (std::regex_match(order, Patterns::desc)){
+                            comparator =
+                                    [index](Row const& row1, Row const& row2) {
+                                        return std::get<int>(row1.attributes[index]) > std::get<int>(row2.attributes[index]);
+                                    };
+                        } else {
+                            std::cout << "Syntax Error: ASC or DESC expected";
+                            exit(-1);
+                        }
+                    } else if (outputTable.dataType[index] == "f") {
+                        if (std::regex_match(order, Patterns::asc)) {
+                            comparator =
+                                    [index](Row const& row1, Row const& row2) {
+                                        return std::get<float>(row1.attributes[index]) < std::get<float>(row2.attributes[index]);
+                                    };
+                        } else if (std::regex_match(order, Patterns::desc)){
+                            comparator =
+                                    [index](Row const& row1, Row const& row2) {
+                                        return std::get<float>(row1.attributes[index]) > std::get<float>(row2.attributes[index]);
+                                    };
+                        } else {
+                            std::cout << "Syntax Error: ASC or DESC expected";
+                            exit(-1);
+                        }
+                    } else {
+                        if (std::regex_match(order, Patterns::asc)) {
+                            comparator =
+                                    [index](Row const& row1, Row const& row2) {
+                                        return std::get<std::string>(row1.attributes[index]) < std::get<std::string>(row2.attributes[index]);
+                                    };
+                        } else if (std::regex_match(order, Patterns::desc)){
+                            comparator =
+                                    [index](Row const& row1, Row const& row2) {
+                                        return std::get<std::string>(row1.attributes[index]) > std::get<std::string>(row2.attributes[index]);
+                                    };
+                        } else {
+                            std::cout << "Syntax Error: ASC or DESC expected";
+                            exit(-1);
+                        }
+                    }
+
+                    //yes, this is Bubble Sort. I was too exhausted to do something better, sowwy :-(
+                    bool swapped;
+                    for (int i = 0; i < outputTable.content.size(); i++) {
+                        swapped = false;
+                        for (int j = 1; j < outputTable.content.size() - i; j++) {
+                            if (comparator(outputTable.content[j], outputTable.content[j - 1])) {
+                                std::swap(outputTable.content[j], outputTable.content[j - 1]);
+                                swapped = true;
+                            }
+                        }
+                        if (!swapped) break;
+                    }
+                }
+
+                if (cmd_iterator == ast.size()) {
+                    outputTable.print();
+                    return;
                 }
             }
         } else if (ast[cmd_iterator] == "INSERT_INTO") {
