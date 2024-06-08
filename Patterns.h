@@ -37,6 +37,8 @@ public:
     static const std::regex by;
     static const std::regex asc;
     static const std::regex desc;
+    static const std::regex column;
+    static const std::regex add;
 };
 
 #endif //DATABASE_PATTERNS_H

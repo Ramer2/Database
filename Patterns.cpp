@@ -34,3 +34,5 @@ const std::regex Patterns::order = std::regex("order", std::regex_constants::ica
 const std::regex Patterns::by = std::regex("by", std::regex_constants::icase);
 const std::regex Patterns::asc = std::regex("asc", std::regex_constants::icase);
 const std::regex Patterns::desc = std::regex("desc", std::regex_constants::icase);
+const std::regex Patterns::add = std::regex("add", std::regex_constants::icase);
+const std::regex Patterns::column = std::regex("column", std::regex_constants::icase);

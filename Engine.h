@@ -39,6 +39,8 @@ private:
                 std::regex_match(word, Patterns::on) or
                 std::regex_match(word, Patterns::order) or
                 std::regex_match(word, Patterns::by) or
+                std::regex_match(word, Patterns::column) or
+                std::regex_match(word, Patterns::add) or
                 std::regex_match(word, Patterns::where));
     }
 
@@ -277,6 +279,32 @@ public:
             } else {
                 std::cout << "Syntax Error: \"TABLE\" keyword expected";
                 exit(-1);
+            }
+        } else if (std::regex_match(input[0], Patterns::alter)) {
+            auto iterator = 1;
+            if (std::regex_match(input[iterator], Patterns::table)) {
+                iterator++;
+                ast.emplace_back("ALTER_TABLE");
+                parameters["ALTER_TABLE"].emplace_back(input[iterator]);
+                iterator++;
+                if (std::regex_match(input[iterator], Patterns::add)) {
+                    iterator++;
+                    ast.emplace_back("ADD");
+                    parameters["ADD"] = parameterExtraction(input, iterator);
+                } else if (std::regex_match(input[iterator], Patterns::drop)) {
+                    iterator++;
+                    if (std::regex_match(input[iterator], Patterns::column)) {
+                        iterator++;
+                        ast.emplace_back("DROP_COLUMN");
+                        parameters["DROP_COLUMN"].emplace_back(input[iterator]);
+                    } else {
+                        std::cout << "Syntax Error: \"COLUMN\" keyword expected";
+                        exit(-1);
+                    }
+                } else {
+                    std::cout << R"(Syntax Error: "ADD" or "DROP" keyword expected)";
+                    exit(-1);
+                }
             }
         } else {
             std::cout << "Syntax Error: Keyword expected";
@@ -1089,6 +1117,72 @@ public:
                 }
             }
 
+        } else if (ast[cmd_iterator] == "ALTER_TABLE") {
+            cmd_iterator++;
+
+            auto tableName = parameters["ALTER_TABLE"][0];
+            Table* reqTable;
+            for (auto& table : Database::database) {
+                if (table.name == tableName) {
+                    reqTable = &table;
+                }
+            }
+
+            if (!reqTable->content.empty()) {
+                std::cout << "Syntax Error: you can't alter a non-empty table.";
+                exit(-1);
+            }
+
+            if (ast[cmd_iterator] == "ADD") {
+                auto column_name = parameters["ADD"][0];
+
+                for (auto const& col : reqTable->col_names) {
+                    if (col == column_name) {
+                        std::cout << "Syntax Error: column with this name already exists.";
+                        exit(-1);
+                    }
+                }
+
+                auto type = std::string();
+                if (std::regex_match(parameters["ADD"][1], Patterns::integer)) {
+                    type = "i";
+                } else if (std::regex_match(parameters["ADD"][1], Patterns::varchar) or std::regex_match(parameters["ADD"][1], Patterns::date)) {
+                    type = "s";
+                } else if (std::regex_match(parameters["ADD"][1], Patterns::number)) {
+                    type = "f";
+                } else {
+                    std::cout << "Syntax Error: unknown data type";
+                    exit(-1);
+                }
+                reqTable->addColumn(column_name, type, true, false);
+            } else {
+                auto reqColumn = parameters["DROP_COLUMN"][0];
+
+                if (reqTable->columns[reqColumn]) {
+                    std::cout << "Syntax Error: you can't remove primary key columns.";
+                    exit(-1);
+                }
+
+                auto index = -1;
+                for (int i = 0; i < reqTable->col_names.size(); i++) {
+                    if (reqTable->col_names[i] == reqColumn) {
+                        index = i;
+                        break;
+                    }
+                }
+                if (index == -1) {
+                    std::cout << "Syntax Error: the requested column was not found.";
+                    exit(-1);
+                }
+
+                reqTable->col_names.erase(reqTable->col_names.begin() + index);
+                reqTable->columns.erase(reqColumn);
+                reqTable->fks.erase(reqColumn);
+                reqTable->references.erase(reqColumn);
+                reqTable->nullable.erase(reqColumn);
+                reqTable->dataType.erase(reqTable->dataType.begin() + index);
+            }
+            reqTable->print();
         } else if (ast[cmd_iterator] == "DROP_TABLE") {
             auto iterator = Database::database.begin();
             while (iterator != Database::database.end()){
