@@ -239,7 +239,7 @@ int main() {
         return 0;
     }
 }
-//TODO: in JOIN implement the check whether the checking column is an fk column
+
 //TODO: ORDER BY, ALTER TABLE, UPDATE ... SET ... WHERE, DELETE ... FROM ... WHERE
 
 //TODO: finish the commands

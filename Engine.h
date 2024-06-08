@@ -661,6 +661,11 @@ public:
                             }
                         }
 
+                        if (!(outputTable.fks[leftCol] && joinTable->columns[rightCol])) {
+                            std::cout << "Syntax Error: the checking columns are not keys";
+                            exit(-1);
+                        }
+
                         Table* leftTable;
                         Table* rightTable;
                         bool leftFound = false;
