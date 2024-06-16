@@ -1,16 +1,82 @@
 #include "Patterns.h"
 #include "Table.h"
 #include "Database.h"
+#include <fstream>
+#include <filesystem>
 
 #ifndef DATABASE_ENGINE_H
 #define DATABASE_ENGINE_H
-
 
 //syntax check, ast and completion of the code
 class Engine {
 private:
     static std::vector<std::string> ast; //abstract syntax tree (strictly the order)
     static std::map<std::string, std::vector<std::string>> parameters;
+
+    auto static saver() {
+        auto dirPath = std::string("../tables");
+        for (auto const& file : std::filesystem::directory_iterator(dirPath))
+            std::filesystem::remove(file);
+
+        for (auto& table : Database::database) {
+            auto file_name = table.name;
+            try {
+                auto file = std::ofstream("../tables/" + file_name + ".txt");
+                //writing table name
+                file << table.name + '\n';
+
+                //writing column names
+                for (auto const& el : table.col_names)
+                    file << el << " ";
+                file << '\n';
+
+                //writing primary keys
+                for (auto const& el : table.col_names)
+                    file << table.columns[el] << " ";
+                file << '\n';
+
+                //writing foreign keys
+                for (auto const& el : table.col_names)
+                    file << table.fks[el] << " ";
+                file << '\n';
+
+                //writing references
+                for (auto const& el : table.col_names)
+                    if (table.fks[el]) {
+                        file << el << " " << table.references[el] << " \n";
+                    }
+
+                //writing nullable columns
+                for (auto const& el : table.col_names)
+                    file << table.nullable[el] << " ";
+                file << '\n';
+
+                //writing data types
+                for (auto const& el : table.dataType) {
+                    file << el << " ";
+                }
+                file << '\n';
+
+                //writing down rows
+                for (auto const& row : table.content) {
+                    for (int i = 0; i < row.attributes.size(); i++) {
+                        if (table.dataType[i] == "i") {
+                            file << std::get<int>(row.attributes[i]) << " ";
+                        } else if (table.dataType[i] == "f") {
+                            file << std::get<float>(row.attributes[i]) << " ";
+                        } else if (table.dataType[i] == "s") {
+                            file << std::get<std::string>(row.attributes[i]) << " ";
+                        }
+                    }
+                    file << '\n';
+                }
+                file.close();
+            } catch (std::exception const& e) {
+                std::cout << "Problem occurred while saving files. Contact your personal programmer.";
+                exit(-1);
+            }
+        }
+    }
 
     static auto toLowerCase(std::string const& str) {
         auto newString = std::string();
@@ -57,6 +123,7 @@ private:
         if (isKeyword(input[from]) && !isLogic(input[from])) {
             std::cout << "Syntax Error: found a keyword, parameter expected";
             //exit the program
+            saver();
             exit(-1);
         }
         while (from < input.size() and !(isKeyword(input[from]) && !isLogic(input[from]))) {
@@ -75,6 +142,7 @@ private:
         if (isKeyword(input[from])) {
             std::cout << "Syntax Error: found a keyword, parameter expected";
             //exit the program
+            saver();
             exit(-1);
         }
         while (from < input.size() and !isKeyword(input[from])) {
@@ -89,7 +157,6 @@ private:
     }
 
     //this method is used for conditions in such commands as WHERE and JOIN
-    //
     static auto conditionCheck (std::vector<std::string> const& dataType, int const& index, std::string const& logicOperator,
                                 bool const& negated, std::string const& parameter, Row const& row) {
         if (dataType[index] == "i") {
@@ -156,19 +223,15 @@ private:
 
 public:
     static auto codeRetrieval(std::vector<std::string>& input) {
-
+        ast.clear();
+        parameters.clear();
         //select
         if (std::regex_match(input[0], Patterns::select)){
             auto iterator = 1;
             ast.emplace_back("SELECT");
             parameters["SELECT"] = parameterExtraction(input, iterator);
 
-            //from or into
-            if (std::regex_match(input[iterator], Patterns::into)) {
-                iterator++;
-                ast.emplace_back("INTO");
-                parameters["INTO"] = parameterExtraction(input, iterator);
-            }
+            //from
             if (std::regex_match(input[iterator], Patterns::from)) {
                 iterator++;
                 ast.emplace_back("FROM");
@@ -188,7 +251,6 @@ public:
                         parameters["ON"] = specialParameterExtraction(input, iterator);
                     } else {
                         std::cout << "Syntax Error: \"ON\" expected";
-                        exit(-1);
                     }
                 }
 
@@ -209,12 +271,14 @@ public:
                         parameters["ORDER_BY"] = parameterExtraction(input, iterator);
                     } else {
                         std::cout << "Syntax Error: \"BY\" expected";
+                        saver();
                         exit(-1);
                     }
                 }
 
             } else {
                 std::cout << R"(Syntax Error: "FROM" or "INTO" expected)";
+                saver();
                 exit(-1);
             }
         } else if(std::regex_match(input[0], Patterns::insert)) {
@@ -222,6 +286,7 @@ public:
             //insert into
             if (!std::regex_match(input[iterator], Patterns::into)) {
                 std::cout << R"(Syntax Error: "INTO" expected)";
+                saver();
                 exit(-1);
             }
             iterator++;
@@ -236,11 +301,11 @@ public:
 
             if (!std::regex_match(input[iterator], Patterns::values)) {
                 std::cout << R"(Syntax Error: "VALUES" expected)";
+                saver();
                 exit(-1);
             }
             iterator++;
             ast.emplace_back("VALUES");
-
             parameters["VALUES"] = parameterExtraction(input, iterator);
 
             int val_counter = 0;
@@ -251,12 +316,14 @@ public:
 
             if (val_counter % col_counter != 0) {
                 std::cout << R"(Syntax Error: different number of given values and columns in the table)";
+                saver();
                 exit(-1);
             }
         } else if(std::regex_match(input[0], Patterns::create)) {
             auto iterator = 1;
             if (!std::regex_match(input[iterator], Patterns::table)) {
                 std::cout << R"(Syntax Error: "TABLE" expected)";
+                saver();
                 exit(-1);
             }
 
@@ -270,6 +337,7 @@ public:
                 parameters["DROP_TABLE"].emplace_back(input[2]);
             } else {
                 std::cout << "Syntax Error: \"TABLE\" keyword expected";
+                saver();
                 exit(-1);
             }
         } else if (std::regex_match(input[0], Patterns::truncate)) {
@@ -278,6 +346,7 @@ public:
                 parameters["TRUNCATE_TABLE"].emplace_back(input[2]);
             } else {
                 std::cout << "Syntax Error: \"TABLE\" keyword expected";
+                saver();
                 exit(-1);
             }
         } else if (std::regex_match(input[0], Patterns::alter)) {
@@ -299,26 +368,58 @@ public:
                         parameters["DROP_COLUMN"].emplace_back(input[iterator]);
                     } else {
                         std::cout << "Syntax Error: \"COLUMN\" keyword expected";
+                        saver();
                         exit(-1);
                     }
                 } else {
                     std::cout << R"(Syntax Error: "ADD" or "DROP" keyword expected)";
+                    saver();
                     exit(-1);
                 }
             }
+        } else if (std::regex_match(input[0], Patterns::del)) {
+            auto iterator = 1;
+            if (std::regex_match(input[iterator], Patterns::from)) {
+                iterator++;
+                ast.emplace_back("DELETE_FROM");
+                parameters["DELETE_FROM"].emplace_back(input[iterator++]);
+
+                if (!(input.size() == iterator or input.size() == iterator + 1)) {
+                    if (std::regex_match(input[iterator], Patterns::where)) {
+                        iterator++;
+                        ast.emplace_back("WHERE");
+                        parameters["WHERE"] = specialParameterExtraction(input, iterator);
+                    } else {
+                        std::cout << "Syntax Error: \"WHERE\" expected";
+                        saver();
+                        exit(-1);
+                    }
+                }
+            } else {
+                std::cout << "Syntax Error: \"FROM\" expected";
+                saver();
+                exit(-1);
+            }
         } else {
             std::cout << "Syntax Error: Keyword expected";
+            saver();
             exit(-1);
         }
     }
 
     static auto completer() {
-
         auto cmd_iterator = 0;
         if (ast[cmd_iterator] == "CREATE_TABLE") {
-
             auto iterator = 0;
             auto tableName = parameters["CREATE_TABLE"][iterator++];
+
+            for (auto const& table : Database::database) {
+                if (tableName == table.name) {
+                    std::cout << "Syntax Error: not a unique table name";
+                    saver();
+                    exit(-1);
+                }
+            }
             auto newTable = Table(tableName);
 
             while (iterator < parameters["CREATE_TABLE"].size() - 1) {
@@ -342,6 +443,7 @@ public:
                         iterator++;
                     } else {
                         std::cout << "Syntax Error: unknown data type";
+                        saver();
                         exit(-1);
                     }
 
@@ -357,6 +459,7 @@ public:
                             null = false;
                         } else {
                             std::cout << "Syntax Error: \"KEY\" keyword is missing";
+                            saver();
                             exit(-1);
                         }
                     } else if (std::regex_match(parameters["CREATE_TABLE"][iterator], Patterns::foreign)) {
@@ -386,21 +489,25 @@ public:
                                         }
                                         if (!found) {
                                             std::cout << "Syntax Error: reference column wasn't found";
+                                            saver();
                                             exit(-1);
                                         }
                                     }
                                 }
                                 if (!foundTable) {
                                     std::cout << "Syntax Error: reference table wasn't found";
+                                    saver();
                                     exit(-1);
                                 }
 
                             } else {
                                 std::cout << "Syntax Error: \"REFERENCES\" keyword is expected";
+                                saver();
                                 exit(-1);
                             }
                         } else {
                             std::cout << "Syntax Error: \"KEY\" keyword is missing";
+                            saver();
                             exit(-1);
                         }
                     } else if (std::regex_match(parameters["CREATE_TABLE"][iterator], Patterns::null)) {
@@ -414,10 +521,12 @@ public:
                             pk = false;
                         } else {
                             std::cout << "Syntax Error: null expected";
+                            saver();
                             exit(-1);
                         }
                     } else {
                         std::cout << "Syntax Error: null or primary key expected";
+                        saver();
                         exit(-1);
                     }
 
@@ -431,7 +540,6 @@ public:
             Database::database.push_back(newTable);
         } else if (ast[cmd_iterator] == "SELECT") {
             cmd_iterator++;
-
             if (ast[cmd_iterator] == "FROM") {
                 cmd_iterator++;
 
@@ -456,6 +564,7 @@ public:
                     }
                     if (!found) {
                         std::cout << "Syntax Error: unknown table " << name;
+                        saver();
                         exit(-1);
                     }
                 }
@@ -509,6 +618,7 @@ public:
                         }
                         if (!found) {
                             std::cout << "Syntax Error: column " << checkCol << " was not found among listed tables";
+                            saver();
                             exit(-1);
                         }
                     }
@@ -619,6 +729,7 @@ public:
                     }
                     if (!found) {
                         std::cout << "Syntax Error: joining table was not found";
+                        saver();
                         exit(-1);
                     }
 
@@ -636,8 +747,6 @@ public:
                         }
                     }
 
-                    //solution, provided by ChatGPT on "c++: how to get rid of duplicates in the vector of ints"
-                    //omg, this fix worked. I thought I'll have to rewrite this whole loop
                     auto last = std::unique(indexVector.begin(), indexVector.end());
                     indexVector.erase(last, indexVector.end());
 
@@ -704,8 +813,9 @@ public:
                         }
                     }
 
-                    if (!(outputTable.fks[leftCol] && joinTable->columns[rightCol])) {
+                    if (!((outputTable.fks[leftCol] && joinTable->columns[rightCol]) or (outputTable.columns[leftCol] && joinTable->columns[rightCol]))) {
                         std::cout << "Syntax Error: the checking columns are not keys";
+                        saver();
                         exit(-1);
                     }
 
@@ -724,12 +834,14 @@ public:
                     }
                     if (!leftFound or !rightFound) {
                         std::cout << "Syntax Error: joining table was not found";
+                        saver();
                         exit(-1);
                     }
 
                     if (!(logicOperator == "=" or logicOperator == "!=" or logicOperator == "<"
                           or logicOperator == ">" or logicOperator == ">=" or logicOperator == "<=")) {
                         std::cout << "Syntax Error: unknown operator " << logicOperator;
+                        saver();
                         exit(-1);
                     }
 
@@ -752,6 +864,7 @@ public:
 
                     if (leftTable->dataType[leftIndex] != rightTable->dataType[rightIndex]) {
                         std::cout << "Syntax Error: check columns are of different data types";
+                        saver();
                         exit(-1);
                     }
 
@@ -792,6 +905,7 @@ public:
                         if (!(logicOperator1 == "=" or logicOperator1 == "!=" or logicOperator1 == "<"
                               or logicOperator1 == ">" or logicOperator1 == ">=" or logicOperator1 == "<=")) {
                             std::cout << "Syntax Error: unknown operator " << logicOperator1;
+                            saver();
                             exit(-1);
                         }
 
@@ -818,6 +932,7 @@ public:
                         if (!(logicOperator1 == "=" or logicOperator1 == "!=" or logicOperator1 == "<"
                               or logicOperator1 == ">" or logicOperator1 == ">=" or logicOperator1 == "<=")) {
                             std::cout << "Syntax Error: unknown operator " << logicOperator1;
+                            saver();
                             exit(-1);
                         }
 
@@ -863,6 +978,7 @@ public:
                         if (!(logicOperator == "=" or logicOperator == "!=" or logicOperator == "<"
                               or logicOperator == ">" or logicOperator == ">=" or logicOperator == "<=")) {
                             std::cout << "Syntax Error: unknown operator " << logicOperator;
+                            saver();
                             exit(-1);
                         }
 
@@ -907,10 +1023,11 @@ public:
                     }
                     if (!found) {
                         std::cout << "Syntax Error: sort column was not found";
+                        saver();
                         exit(-1);
                     }
 
-                    //Suggestion from ChatGPT
+                    //Suggestion from ChatGPT to use comparators
                     std::function<bool(Row const&,Row const&)> comparator;
 
                     if (outputTable.dataType[index] == "i") {
@@ -926,6 +1043,7 @@ public:
                                     };
                         } else {
                             std::cout << "Syntax Error: ASC or DESC expected";
+                            saver();
                             exit(-1);
                         }
                     } else if (outputTable.dataType[index] == "f") {
@@ -941,6 +1059,7 @@ public:
                                     };
                         } else {
                             std::cout << "Syntax Error: ASC or DESC expected";
+                            saver();
                             exit(-1);
                         }
                     } else {
@@ -956,11 +1075,13 @@ public:
                                     };
                         } else {
                             std::cout << "Syntax Error: ASC or DESC expected";
+                            saver();
                             exit(-1);
                         }
                     }
 
                     //yes, this is Bubble Sort. I was too exhausted to do something better, sowwy :-(
+                    //12hrs later: i have no idea why i decided to use this, i guess im gonna leave it
                     bool swapped;
                     for (int i = 0; i < outputTable.content.size(); i++) {
                         swapped = false;
@@ -994,6 +1115,7 @@ public:
             //check for number of columns
             if ((parameters["INSERT_INTO"].size() - 3) > col_num) {// -3 cuz of the brackets at the beginning and at the end and the table name at the beginning
                 std::cout << "Syntax Error: number of columns at the input is larger than in the table";
+                saver();
                 exit(-1);
             }
 
@@ -1014,6 +1136,7 @@ public:
                     }
                     if (!isAmongParams and !thisTable->nullable[col]) {
                         std::cout << "Syntax error: unknown column or not defined non-nullable column";
+                        saver();
                         exit(-1);
                     }
                     isAmongParams = false;
@@ -1099,13 +1222,14 @@ public:
                             }
                             if (!found) {
                                 std::cout << "Syntax error: this reference value does not exist.";
+                                saver();
                                 exit(-1);
                             }
                         }
                     }
 
                     //I hope that I'm dealing with a responsible user who will not put something like "3.14afsdga" for a >
-                    // > float column (stof and stoi don't crash, the information is simply lost)
+                    // > float column (stof and stoi don't crash, part of the information is simply lost)
                     if (type == "i") {
                         row.emplace_back(std::stoi(el));
                     } else if (type == "f") {
@@ -1130,15 +1254,22 @@ public:
 
             if (!reqTable->content.empty()) {
                 std::cout << "Syntax Error: you can't alter a non-empty table.";
+                saver();
                 exit(-1);
             }
 
             if (ast[cmd_iterator] == "ADD") {
+                if (parameters["ADD"].size() != 2) {
+                    std::cout << "Syntax Error: too little parameters. The format is \"ADD columnName dataType\"";
+                    saver();
+                    exit(-1);
+                }
                 auto column_name = parameters["ADD"][0];
 
                 for (auto const& col : reqTable->col_names) {
                     if (col == column_name) {
                         std::cout << "Syntax Error: column with this name already exists.";
+                        saver();
                         exit(-1);
                     }
                 }
@@ -1152,6 +1283,7 @@ public:
                     type = "f";
                 } else {
                     std::cout << "Syntax Error: unknown data type";
+                    saver();
                     exit(-1);
                 }
                 reqTable->addColumn(column_name, type, true, false);
@@ -1160,6 +1292,7 @@ public:
 
                 if (reqTable->columns[reqColumn]) {
                     std::cout << "Syntax Error: you can't remove primary key columns.";
+                    saver();
                     exit(-1);
                 }
 
@@ -1172,6 +1305,7 @@ public:
                 }
                 if (index == -1) {
                     std::cout << "Syntax Error: the requested column was not found.";
+                    saver();
                     exit(-1);
                 }
 
@@ -1183,28 +1317,100 @@ public:
                 reqTable->dataType.erase(reqTable->dataType.begin() + index);
             }
             reqTable->print();
+        } else if (ast[cmd_iterator] == "DELETE_FROM") {
+            auto tableName = parameters["DELETE_FROM"][0];
+
+            Table* reqTable;
+            for (auto& table : Database::database) {
+                if (table.name == tableName) {
+                    reqTable = &table;
+                    break;
+                }
+            }
+
+            if (ast.size() != 1) {
+                auto iterator = 0;
+                bool negated = false;
+                if (std::regex_match(parameters["WHERE"][iterator], Patterns::not_)) {
+                    negated = true;
+                    iterator++;
+                }
+
+                auto left = parameters["WHERE"][iterator++];
+                auto logicOperator = parameters["WHERE"][iterator++];
+                auto right = parameters["WHERE"][iterator++];
+
+                bool found = false;
+                auto reqCol = std::string();
+                for (auto const& col : reqTable->col_names) {
+                    if (left == col) {
+                        reqCol = col;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    std::cout << "Syntax Error: requested column is not found";
+                    saver();
+                    exit(-1);
+                }
+
+                auto index = int();
+                for (int i = 0; i < reqTable->col_names.size(); i++) {
+                    if (reqTable->col_names[i] == reqCol) {
+                        index = i;
+                        break;
+                    }
+                }
+
+                auto row_iterator = reqTable->content.begin();
+                while (row_iterator < reqTable->content.end()) {
+                    if (conditionCheck(reqTable->dataType, index, logicOperator, negated, right, *row_iterator)) {
+                        reqTable->content.erase(row_iterator);
+                    }
+                    row_iterator++;
+                }
+
+            } else {
+                reqTable->content.clear();
+            }
+
+            reqTable->print();
+
         } else if (ast[cmd_iterator] == "DROP_TABLE") {
+            if (Database::database.empty()) {
+                std::cout << "Syntax Error: the database is empty";
+                saver();
+                exit(-1);
+            }
+            bool found = false;
             auto iterator = Database::database.begin();
-            while (iterator != Database::database.end()){
+            while (iterator < Database::database.end()){
                 if ((*iterator).name == parameters["DROP_TABLE"][0]) {
                     Database::database.erase(iterator);
-                    return;
+                    found = true;
+                    break;
                 }
                 iterator++;
             }
-            std::cout << "Syntax Error: table " << parameters["DROP_TABLE"][0] << " wasn't found";
-            exit(-1);
+            if (!found) {
+                std::cout << "Syntax Error: table " << parameters["DROP_TABLE"][0] << " wasn't found";
+                saver();
+                exit(-1);
+            }
         } else if (ast[cmd_iterator] == "TRUNCATE_TABLE") {
             auto table_name = parameters["TRUNCATE_TABLE"][0];
             for (auto& table : Database::database) {
                 if (table.name == table_name) {
                     table.content.clear();
+                    table.print();
                     break;
                 }
             }
         }
+        saver();
     }
 };
-
 
 #endif //DATABASE_ENGINE_H

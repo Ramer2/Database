@@ -36,3 +36,5 @@ const std::regex Patterns::asc = std::regex("asc", std::regex_constants::icase);
 const std::regex Patterns::desc = std::regex("desc", std::regex_constants::icase);
 const std::regex Patterns::add = std::regex("add", std::regex_constants::icase);
 const std::regex Patterns::column = std::regex("column", std::regex_constants::icase);
+const std::regex Patterns::exit = std::regex("exit", std::regex_constants::icase);
+const std::regex Patterns::database = std::regex("database", std::regex_constants::icase);

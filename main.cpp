@@ -1,6 +1,7 @@
+//!1948 lines!
+// https://github.com/Ramer2/Database
+
 #include "Engine.h"
-#include <fstream>
-#include <filesystem>
 
 auto reader() {
     auto dirPath = std::string("../tables");
@@ -125,71 +126,6 @@ auto reader() {
     }
 }
 
-auto saver() {
-    auto dirPath = std::string("../tables");
-    for (auto const& file : std::filesystem::directory_iterator(dirPath))
-        std::filesystem::remove(file);
-
-    for (auto& table : Database::database) {
-        auto file_name = table.name;
-        try {
-            auto file = std::ofstream("../tables/" + file_name + ".txt");
-            //writing table name
-            file << table.name + '\n';
-
-            //writing column names
-            for (auto const& el : table.col_names)
-                file << el << " ";
-            file << '\n';
-
-            //writing primary keys
-            for (auto const& el : table.col_names)
-                file << table.columns[el] << " ";
-            file << '\n';
-
-            //writing foreign keys
-            for (auto const& el : table.col_names)
-                file << table.fks[el] << " ";
-            file << '\n';
-
-            //writing references
-            for (auto const& el : table.col_names)
-                if (table.fks[el]) {
-                    file << el << " " << table.references[el] << " \n";
-                }
-
-            //writing nullable columns
-            for (auto const& el : table.col_names)
-                file << table.nullable[el] << " ";
-            file << '\n';
-
-            //writing data types
-            for (auto const& el : table.dataType) {
-                file << el << " ";
-            }
-            file << '\n';
-
-            //writing down rows
-            for (auto const& row : table.content) {
-                for (int i = 0; i < row.attributes.size(); i++) {
-                    if (table.dataType[i] == "i") {
-                        file << std::get<int>(row.attributes[i]) << " ";
-                    } else if (table.dataType[i] == "f") {
-                        file << std::get<float>(row.attributes[i]) << " ";
-                    } else if (table.dataType[i] == "s") {
-                        file << std::get<std::string>(row.attributes[i]) << " ";
-                    }
-                }
-                file << '\n';
-            }
-            file.close();
-        } catch (std::exception const& e) {
-            std::cout << "Problem occurred while saving files. Contact your personal programmer.";
-            exit(-1);
-        }
-    }
-}
-
 auto lexicalAnalysis(std::string& str) {
     auto output = std::vector<std::string>();
     auto word = std::string();
@@ -216,33 +152,21 @@ int main() {
     while (true) {
         auto query = std::string();
         auto command = std::vector<std::string>();
-//        std::getline(std::cin, query);
-//        query = "CREATE TABLE employees (id INTEGER PRIMARY KEY, first_name VARCHAR(50) not null,  mid_name VARCHAR(50) NULL, last_name VARCHAR(75) NOT NULL, dateofbirth DATE NOT NULL);";
-//        query = "INSERT INTO driver (idDriver, first_name, last_name, idCar) VALUES (1, John, Smith, 1), (2, Lara, Croft, 3);";
-//        query = "DROP TABLE employees;";
-//        query = "SELECT first_name, last_name, id, dateofbirth FROM employees WHERE first_name = 'OLEKSANDR' AND id > 2;";
-//        query = "CREATE TABLE driver ( idDriver integer primary key, first_name varchar(50) not null, last_name varchar(50) not null, idCar integer foreign key references car(idCar);";
-//        query = "CREATE TABLE car ( idCar integer primary key, model varchar(50) not null, yearOfProduction integer not null;";
-//        query = "TRUNCATE TABLE driver";
-//        query = "SELECT * FROM driver JOIN car ON driver.idCar = car.idCar ORDER BY idDriver DESC;";
-//        query = "ALTER TABLE boxers DROP COLUMN dateofbirth;";
-//        query = "ALTER TABLE boxers ADD dateofbirth date;";
+        std::getline(std::cin, query);
         command = lexicalAnalysis(query);
+        if (std::regex_match(command[0], Patterns::exit)) {
+            fmt::println("The database was saved and the program was successfully terminated.");
+            return 0;
+        } else if (std::regex_match(command[0], Patterns::database)) {
+            int counter = 0;
+            for (auto const& table : Database::database) {
+                fmt::println("{}. {}", counter, table.name);
+                counter++;
+            }
+            continue;
+        }
 
         Engine::codeRetrieval(command);
         Engine::completer();
-
-//        for (auto& table : Database::database) {
-//            fmt::println("{}", table.name);
-//            table.print();
-//        }
-
-        saver();
-        return 0;
     }
 }
-//TODO: UPDATE ... SET ... WHERE, DELETE ... FROM ... WHERE
-//TODO: finish the commands
-
-//TODO: complete the main.cpp
-//TODO: encapsulation (private fields, getters, setters) classes: table, row, engine (optional)
