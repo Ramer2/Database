@@ -27,3 +27,8 @@ Datatypes supported:
 4. number(%,%)
 
 **Cases**: all commands are case-insensitive. It doesn't matter if you write FROM or from (you can even write fROm and it will work).
+
+## Conclusion
+I am very very happy and proud to finish this project. This is by far the largest project I have ever completed (and it is done in C++, wow). So happy to finish it and get 38.5/40 (thank you, Ms. Rzepkowska!).
+
+## Thank you for stopping by)
